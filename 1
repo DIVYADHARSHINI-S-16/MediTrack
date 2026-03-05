@@ -1,0 +1,2790 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MediTrack – Medicine Management System</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.2/sql-wasm.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+/* ══════════ THEME TOKENS ══════════ */
+:root {
+  --primary:#6366f1; --primary-dark:#4f46e5; --primary-glow:rgba(99,102,241,0.35);
+  --secondary:#0ea5e9; --success:#10b981; --warning:#f59e0b; --danger:#ef4444;
+  --font:'Outfit',sans-serif; --mono:'JetBrains Mono',monospace;
+  --radius:14px; --radius-sm:10px; --radius-lg:20px;
+  --trans:background 0.35s ease,color 0.35s ease,border-color 0.35s ease,box-shadow 0.35s ease;
+}
+[data-theme="dark"] {
+  --bg:#0c1120; --bg2:#111827; --bg3:#1e2d3d; --bg4:#263347;
+  --text:#f0f6ff; --text2:#7a91b0; --text3:#3d5070;
+  --border:rgba(99,150,200,0.12); --border2:rgba(99,150,200,0.22);
+  --card:#111827; --card2:#162030; --sidebar:#0c1120;
+  --topbar:rgba(12,17,32,0.9); --inp:rgba(255,255,255,0.05);
+  --shadow:0 8px 40px rgba(0,0,0,0.55); --glow:rgba(99,102,241,0.25);
+}
+[data-theme="light"] {
+  --bg:#f0f4ff; --bg2:#ffffff; --bg3:#e8edf8; --bg4:#dde4f5;
+  --text:#0d1424; --text2:#4a607a; --text3:#94aac2;
+  --border:rgba(80,120,180,0.14); --border2:rgba(80,120,180,0.26);
+  --card:#ffffff; --card2:#f8faff; --sidebar:#ffffff;
+  --topbar:rgba(255,255,255,0.92); --inp:rgba(0,0,0,0.04);
+  --shadow:0 8px 40px rgba(80,120,200,0.1); --glow:rgba(99,102,241,0.12);
+}
+
+/* ══════════ RESET ══════════ */
+*{margin:0;padding:0;box-sizing:border-box;}
+html{scroll-behavior:smooth;}
+body{
+  font-family:var(--font);background:var(--bg);color:var(--text);
+  min-height:100vh;overflow-x:hidden;transition:var(--trans);
+}
+
+/* ══════════ PARTICLES ══════════ */
+#particles{
+  position:fixed;top:0;left:0;width:100%;height:100%;
+  pointer-events:none;z-index:0;overflow:hidden;
+}
+[data-theme="light"] #particles{opacity:0.3;}
+.particle{
+  position:absolute;width:2px;height:2px;
+  background:var(--primary);border-radius:50%;
+  animation:floatUp linear infinite;opacity:0;
+}
+@keyframes floatUp{
+  0%{transform:translateY(100vh) translateX(0);opacity:0;}
+  10%{opacity:0.7;}90%{opacity:0.2;}
+  100%{transform:translateY(-20px) translateX(80px);opacity:0;}
+}
+
+/* ══════════ GLOWING ORBS ══════════ */
+.bg-orb{
+  position:fixed;border-radius:50%;pointer-events:none;z-index:0;
+  filter:blur(90px);animation:orbDrift ease-in-out infinite;
+}
+.orb1{width:500px;height:500px;top:-100px;left:-100px;background:radial-gradient(circle,rgba(99,102,241,0.12),transparent 70%);animation-duration:22s;}
+.orb2{width:400px;height:400px;bottom:-80px;right:-80px;background:radial-gradient(circle,rgba(14,165,233,0.09),transparent 70%);animation-duration:18s;animation-delay:-7s;}
+.orb3{width:300px;height:300px;top:50%;left:55%;background:radial-gradient(circle,rgba(16,185,129,0.07),transparent 70%);animation-duration:26s;animation-delay:-12s;}
+@keyframes orbDrift{
+  0%,100%{transform:translate(0,0);}
+  33%{transform:translate(25px,-30px);}
+  66%{transform:translate(-15px,15px);}
+}
+[data-theme="light"] .orb1{background:radial-gradient(circle,rgba(99,102,241,0.07),transparent 70%);}
+[data-theme="light"] .orb2{background:radial-gradient(circle,rgba(14,165,233,0.05),transparent 70%);}
+[data-theme="light"] .orb3{display:none;}
+
+/* ══════════ APP LAYOUT ══════════ */
+.app{display:flex;min-height:100vh;position:relative;z-index:1;}
+
+/* ══════════ SIDEBAR ══════════ */
+.sidebar{
+  width:262px;background:var(--sidebar);border-right:1px solid var(--border);
+  position:fixed;top:0;left:0;height:100vh;
+  display:flex;flex-direction:column;z-index:200;
+  transition:var(--trans);
+}
+[data-theme="dark"] .sidebar{background:rgba(12,17,32,0.97);backdrop-filter:blur(20px);}
+[data-theme="light"] .sidebar{background:rgba(255,255,255,0.97);backdrop-filter:blur(20px);box-shadow:2px 0 20px rgba(80,120,200,0.08);}
+
+.sidebar-logo{
+  padding:22px 20px;border-bottom:1px solid var(--border);
+  display:flex;align-items:center;gap:13px;
+  animation:slideInLeft 0.5s ease;
+}
+.logo-icon{
+  width:42px;height:42px;
+  background:linear-gradient(135deg,var(--primary),var(--secondary));
+  border-radius:13px;display:flex;align-items:center;justify-content:center;
+  font-size:20px;flex-shrink:0;
+  box-shadow:0 0 24px var(--primary-glow);
+  animation:logoPulse 3.5s ease-in-out infinite;
+}
+@keyframes logoPulse{0%,100%{box-shadow:0 0 20px var(--primary-glow);}50%{box-shadow:0 0 40px rgba(99,102,241,0.6),0 0 0 8px rgba(99,102,241,0.04);}}
+@keyframes slideInLeft{from{opacity:0;transform:translateX(-20px);}to{opacity:1;transform:translateX(0);}}
+.logo-text{font-size:19px;font-weight:800;background:linear-gradient(135deg,var(--primary),var(--secondary));-webkit-background-clip:text;-webkit-text-fill-color:transparent;}
+.logo-sub{font-size:10.5px;color:var(--text2);margin-top:2px;letter-spacing:0.3px;}
+
+.sidebar-nav{padding:14px 10px;flex:1;overflow-y:auto;}
+.sidebar-nav::-webkit-scrollbar{display:none;}
+.nav-section{margin-bottom:8px;}
+.nav-section-title{font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1.8px;padding:8px 12px 4px;}
+.nav-item{
+  display:flex;align-items:center;gap:11px;padding:10px 12px;
+  border-radius:11px;cursor:pointer;transition:all 0.2s;
+  color:var(--text2);font-size:13.5px;font-weight:500;
+  margin-bottom:2px;position:relative;overflow:hidden;
+}
+.nav-item::before{
+  content:'';position:absolute;left:0;top:0;height:100%;width:3px;
+  background:linear-gradient(180deg,var(--primary),var(--secondary));
+  border-radius:0 3px 3px 0;transform:scaleY(0);transition:transform 0.25s ease;
+}
+.nav-item::after{
+  content:'';position:absolute;inset:0;
+  background:linear-gradient(90deg,rgba(99,102,241,0.12),transparent);
+  opacity:0;transition:opacity 0.25s;border-radius:11px;
+}
+.nav-item:hover::after,.nav-item.active::after{opacity:1;}
+.nav-item:hover{color:var(--text);}
+.nav-item.active{color:var(--primary);background:rgba(99,102,241,0.1);}
+.nav-item.active::before{transform:scaleY(1);}
+.nav-icon{font-size:17px;width:22px;text-align:center;flex-shrink:0;transition:transform 0.25s;}
+.nav-item:hover .nav-icon{transform:scale(1.15) rotate(-3deg);}
+.nav-badge{
+  margin-left:auto;background:var(--danger);color:#fff;
+  font-size:10px;font-weight:700;padding:2px 7px;border-radius:20px;
+  animation:badgePulse 2s infinite;
+}
+@keyframes badgePulse{0%,100%{opacity:1;transform:scale(1);}50%{opacity:0.75;transform:scale(0.95);}}
+
+.sidebar-footer{padding:14px;border-top:1px solid var(--border);}
+.user-card{
+  display:flex;align-items:center;gap:10px;padding:10px 12px;
+  border-radius:11px;background:var(--inp);cursor:pointer;transition:all 0.2s;
+  border:1px solid var(--border);
+}
+.user-card:hover{background:rgba(99,102,241,0.08);border-color:rgba(99,102,241,0.25);}
+.user-avatar{
+  width:34px;height:34px;border-radius:10px;
+  background:linear-gradient(135deg,var(--primary),var(--secondary));
+  display:flex;align-items:center;justify-content:center;
+  font-weight:700;font-size:14px;color:#fff;flex-shrink:0;
+}
+.user-name{font-size:13px;font-weight:600;}
+.user-role{font-size:11px;color:var(--text2);}
+
+/* ══════════ MAIN ══════════ */
+.main{margin-left:262px;flex:1;display:flex;flex-direction:column;min-height:100vh;}
+
+/* ══════════ TOPBAR ══════════ */
+.topbar{
+  height:62px;position:sticky;top:0;z-index:100;
+  background:var(--topbar);backdrop-filter:blur(20px);
+  border-bottom:1px solid var(--border);
+  display:flex;align-items:center;padding:0 24px;gap:12px;
+  transition:var(--trans);
+}
+.page-title{font-size:17px;font-weight:700;flex:1;transition:var(--trans);}
+.topbar-actions{display:flex;gap:8px;align-items:center;}
+.topbar-btn{
+  width:38px;height:38px;border-radius:11px;
+  background:var(--inp);border:1px solid var(--border);
+  display:flex;align-items:center;justify-content:center;
+  cursor:pointer;font-size:17px;color:var(--text2);
+  transition:all 0.2s;position:relative;user-select:none;
+}
+.topbar-btn:hover{background:rgba(99,102,241,0.12);color:var(--primary);border-color:rgba(99,102,241,0.3);transform:scale(1.08);}
+.notif-dot{
+  position:absolute;top:7px;right:7px;width:7px;height:7px;
+  border-radius:50%;background:var(--danger);animation:badgePulse 2s infinite;
+}
+.db-badge{
+  display:flex;align-items:center;gap:6px;font-size:11px;font-weight:700;
+  padding:5px 12px;border-radius:20px;font-family:var(--mono);letter-spacing:0.3px;
+  transition:all 0.3s;
+}
+.db-badge.ready{
+  background:rgba(16,185,129,0.1);border:1px solid rgba(16,185,129,0.3);color:var(--success);
+}
+.db-badge.loading{
+  background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.3);color:var(--warning);
+}
+.db-dot{width:6px;height:6px;border-radius:50%;background:currentColor;animation:badgePulse 1.4s infinite;}
+
+/* ══════════ CONTENT ══════════ */
+.content{padding:22px;flex:1;}
+.page{display:none;animation:pageReveal 0.4s cubic-bezier(0.16,1,0.3,1);}
+.page.active{display:block;}
+@keyframes pageReveal{
+  from{opacity:0;transform:translateY(20px);}
+  to{opacity:1;transform:translateY(0);}
+}
+
+/* ══════════ STAT CARDS ══════════ */
+.stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px;}
+.stat-card{
+  background:var(--card);
+  border-radius:var(--radius);padding:20px;position:relative;overflow:hidden;
+  transition:all 0.25s;cursor:default;
+}
+.stat-card::before{
+  content:'';position:absolute;top:-20px;right:-20px;
+  width:90px;height:90px;border-radius:50%;opacity:0.12;
+  transition:opacity 0.3s,transform 0.3s;filter:blur(10px);
+}
+.stat-card.blue::before{background:var(--primary);}
+.stat-card.green::before{background:var(--success);}
+.stat-card.yellow::before{background:var(--warning);}
+.stat-card.red::before{background:var(--danger);}
+.stat-card:hover{transform:translateY(-5px);box-shadow:var(--shadow);}
+.stat-card:hover::before{opacity:0.28;transform:scale(1.15);}
+.stat-icon{font-size:28px;margin-bottom:12px;display:block;}
+.stat-val{
+  font-size:32px;font-weight:800;line-height:1;margin-bottom:5px;
+  transition:all 0.4s;
+}
+.stat-val.flash{animation:numFlash 0.5s ease;}
+@keyframes numFlash{0%{transform:scale(1.12);}100%{transform:scale(1);}}
+.stat-label{font-size:13px;color:var(--text2);font-weight:500;}
+.stat-change{font-size:12px;margin-top:8px;display:flex;align-items:center;gap:4px;}
+.stat-change.up{color:var(--success);}
+.stat-change.down{color:var(--danger);}
+
+/* ══════════ PROGRESS ══════════ */
+.progress-bar{height:5px;background:var(--bg3);border-radius:3px;overflow:hidden;margin-top:10px;}
+.progress-fill{
+  height:100%;border-radius:3px;transition:width 1.2s cubic-bezier(0.16,1,0.3,1);
+  animation:growBar 1.2s cubic-bezier(0.16,1,0.3,1);
+}
+@keyframes growBar{from{width:0!important;}}
+
+/* ══════════ CARDS ══════════ */
+.card{
+  background:var(--card);
+  border-radius:var(--radius);overflow:hidden;margin-bottom:20px;
+  transition:var(--trans);
+}
+.card-header{
+  padding:16px 20px;
+  display:flex;align-items:center;justify-content:space-between;
+}
+.card-title{font-size:14.5px;font-weight:700;display:flex;align-items:center;gap:8px;}
+.card-body{padding:20px;}
+
+/* ══════════ BUTTONS ══════════ */
+.btn{
+  padding:9px 18px;border-radius:var(--radius-sm);border:none;cursor:pointer;
+  font-size:13px;font-weight:600;display:inline-flex;align-items:center;gap:6px;
+  transition:all 0.2s;font-family:var(--font);white-space:nowrap;
+}
+.btn:active{transform:scale(0.96);}
+.btn-primary{
+  background:linear-gradient(135deg,var(--primary),var(--primary-dark));color:#fff;
+  box-shadow:0 4px 16px rgba(99,102,241,0.4);
+}
+.btn-primary:hover{transform:translateY(-2px);box-shadow:0 7px 22px rgba(99,102,241,0.55);}
+.btn-success{background:linear-gradient(135deg,#10b981,#059669);color:#fff;box-shadow:0 4px 14px rgba(16,185,129,0.35);}
+.btn-success:hover{transform:translateY(-2px);box-shadow:0 7px 20px rgba(16,185,129,0.5);}
+.btn-danger{background:linear-gradient(135deg,#ef4444,#dc2626);color:#fff;}
+.btn-danger:hover{transform:translateY(-2px);}
+.btn-warning{background:linear-gradient(135deg,#f59e0b,#d97706);color:#fff;}
+.btn-outline{background:transparent;border:1px solid var(--border);color:var(--text2);}
+.btn-outline:hover{border-color:rgba(99,102,241,0.4);color:var(--primary);background:rgba(99,102,241,0.08);}
+.btn-sm{padding:6px 12px;font-size:12px;}
+.btn-icon{width:34px;height:34px;padding:0;justify-content:center;border-radius:9px;}
+
+/* ══════════ TABLE ══════════ */
+.table-wrap{overflow-x:auto;}
+table{width:100%;border-collapse:collapse;}
+th{
+  padding:10px 14px;text-align:left;font-size:11px;font-weight:700;
+  color:var(--text2);text-transform:uppercase;letter-spacing:0.9px;
+  background:var(--bg3);border-bottom:1px solid var(--border);transition:var(--trans);
+}
+td{
+  padding:13px 14px;font-size:13px;
+  border-bottom:1px solid var(--border);vertical-align:middle;transition:var(--trans);
+}
+tr:last-child td{border-bottom:none;}
+tr{transition:background 0.15s;}
+tr:hover td{background:rgba(99,102,241,0.04);}
+tbody tr{animation:rowFade 0.3s ease both;}
+@keyframes rowFade{from{opacity:0;transform:translateX(-8px);}to{opacity:1;transform:translateX(0);}}
+
+/* ══════════ BADGES ══════════ */
+.badge{
+  padding:3px 10px;border-radius:20px;
+  font-size:11px;font-weight:600;display:inline-flex;align-items:center;gap:4px;
+}
+.badge::before{content:'●';font-size:7px;}
+.badge-success{background:rgba(16,185,129,0.12);color:#10b981;}
+.badge-warning{background:rgba(245,158,11,0.12);color:#f59e0b;}
+.badge-danger{background:rgba(239,68,68,0.12);color:#ef4444;}
+.badge-info{background:rgba(14,165,233,0.12);color:#0ea5e9;}
+.badge-purple{background:rgba(99,102,241,0.12);color:#6366f1;}
+.badge-gray{background:rgba(148,163,184,0.1);color:var(--text2);}
+
+/* ══════════ FORM ══════════ */
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+.form-group{display:flex;flex-direction:column;gap:5px;}
+.form-group.full{grid-column:1/-1;}
+label{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:0.6px;}
+input,select,textarea{
+  background:var(--inp);border:1px solid var(--border);
+  border-radius:var(--radius-sm);padding:10px 13px;color:var(--text);
+  font-size:13px;font-family:var(--font);transition:all 0.2s;outline:none;
+}
+input:focus,select:focus,textarea:focus{
+  border-color:rgba(99,102,241,0.5);box-shadow:0 0 0 3px rgba(99,102,241,0.1);
+  background:rgba(99,102,241,0.04);
+}
+select option{background:var(--bg2);color:var(--text);}
+
+/* ══════════ SEARCH ══════════ */
+.search-box{position:relative;display:flex;align-items:center;}
+.search-box input{padding-left:36px;width:230px;}
+.search-icon{position:absolute;left:12px;color:var(--text2);font-size:14px;pointer-events:none;}
+
+/* ══════════ TABS ══════════ */
+.tabs{
+  display:flex;gap:3px;padding:4px;
+  background:var(--bg3);border-radius:13px;margin-bottom:18px;flex-wrap:wrap;
+  transition:var(--trans);
+}
+.tab{
+  padding:7px 15px;border-radius:9px;font-size:12.5px;font-weight:500;
+  cursor:pointer;color:var(--text2);transition:all 0.22s;
+}
+.tab.active{
+  background:linear-gradient(135deg,var(--primary),var(--primary-dark));
+  color:#fff;box-shadow:0 4px 14px rgba(99,102,241,0.4);
+}
+.tab:hover:not(.active){color:var(--text);background:rgba(255,255,255,0.06);}
+[data-theme="light"] .tab:hover:not(.active){background:rgba(0,0,0,0.05);}
+
+/* ══════════ MODAL ══════════ */
+.modal-overlay{
+  position:fixed;inset:0;background:rgba(0,0,0,0.7);
+  backdrop-filter:blur(10px);z-index:1000;
+  display:none;align-items:center;justify-content:center;
+}
+.modal-overlay.open{display:flex;animation:fadeIn 0.2s ease;}
+@keyframes fadeIn{from{opacity:0;}to{opacity:1;}}
+.modal{
+  background:var(--bg2);border:1px solid var(--border2);border-radius:var(--radius-lg);
+  width:570px;max-width:95vw;max-height:90vh;overflow-y:auto;
+  animation:modalSlideUp 0.35s cubic-bezier(0.16,1,0.3,1);
+  box-shadow:0 30px 80px rgba(0,0,0,0.5);transition:var(--trans);
+}
+@keyframes modalSlideUp{from{transform:scale(0.92) translateY(24px);opacity:0;}to{transform:scale(1) translateY(0);opacity:1;}}
+.modal-header{
+  padding:20px 24px;border-bottom:1px solid var(--border);
+  display:flex;align-items:center;justify-content:space-between;
+}
+.modal-title{font-size:16px;font-weight:700;}
+.modal-close{
+  width:32px;height:32px;border-radius:9px;background:var(--inp);
+  border:none;cursor:pointer;color:var(--text2);font-size:16px;
+  display:flex;align-items:center;justify-content:center;transition:all 0.2s;
+}
+.modal-close:hover{background:rgba(239,68,68,0.14);color:var(--danger);}
+.modal-body{padding:24px;}
+.modal-footer{padding:16px 24px;border-top:1px solid var(--border);display:flex;gap:8px;justify-content:flex-end;}
+
+/* ══════════ ALERTS ══════════ */
+.alert-item{
+  display:flex;align-items:center;gap:14px;padding:13px 15px;
+  border-radius:12px;margin-bottom:10px;border:1px solid;
+  transition:all 0.22s;animation:alertIn 0.35s ease both;
+}
+@keyframes alertIn{from{opacity:0;transform:translateX(-16px);}to{opacity:1;transform:translateX(0);}}
+.alert-item:hover{transform:translateX(5px);}
+.alert-item.danger{background:rgba(239,68,68,0.07);border-color:rgba(239,68,68,0.22);}
+.alert-item.warning{background:rgba(245,158,11,0.07);border-color:rgba(245,158,11,0.22);}
+.alert-item.info{background:rgba(14,165,233,0.07);border-color:rgba(14,165,233,0.22);}
+.alert-icon{font-size:22px;flex-shrink:0;}
+.alert-info{flex:1;}
+.alert-title{font-size:13px;font-weight:600;margin-bottom:2px;}
+.alert-desc{font-size:12px;color:var(--text2);}
+.alert-time{font-size:11px;color:var(--text2);white-space:nowrap;}
+
+/* ══════════ CHART BARS ══════════ */
+.chart-row{display:flex;align-items:center;gap:12px;margin-bottom:13px;}
+.chart-label{width:130px;font-size:12px;color:var(--text2);text-align:right;flex-shrink:0;}
+.chart-bar-wrap{flex:1;}
+.chart-val{width:44px;font-size:12px;font-weight:700;text-align:right;font-family:var(--mono);}
+
+/* ══════════ GRIDS ══════════ */
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:18px;}
+.grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;}
+.grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;}
+
+/* ══════════ SUPPLIER CARDS ══════════ */
+.supplier-card{
+  background:var(--card);border:1px solid var(--border);border-radius:var(--radius);
+  padding:18px;transition:all 0.25s;cursor:default;position:relative;overflow:hidden;
+}
+.supplier-card::after{
+  content:'';position:absolute;inset:0;border-radius:var(--radius);
+  background:linear-gradient(135deg,rgba(99,102,241,0.04),transparent);
+  opacity:0;transition:opacity 0.3s;
+}
+.supplier-card:hover::after{opacity:1;}
+.supplier-card:hover{border-color:rgba(99,102,241,0.35);transform:translateY(-4px);box-shadow:0 12px 36px rgba(99,102,241,0.14);}
+.supplier-avatar{
+  width:44px;height:44px;border-radius:12px;
+  background:linear-gradient(135deg,var(--primary),var(--secondary));
+  display:flex;align-items:center;justify-content:center;
+  font-size:20px;font-weight:700;margin-bottom:12px;color:#fff;
+  box-shadow:0 4px 14px rgba(99,102,241,0.35);
+}
+.supplier-name{font-size:14px;font-weight:700;margin-bottom:4px;}
+.supplier-contact{font-size:12px;color:var(--text2);margin-bottom:10px;line-height:1.6;}
+
+/* ══════════ PO STEPPER ══════════ */
+.po-status-bar{display:flex;margin:18px 0;position:relative;}
+.po-step{flex:1;text-align:center;position:relative;}
+.po-step::before{
+  content:'';position:absolute;top:17px;left:50%;right:-50%;
+  height:2px;background:var(--border);z-index:0;
+}
+.po-step:last-child::before{display:none;}
+.po-dot{
+  width:35px;height:35px;border-radius:50%;
+  background:var(--bg3);border:2px solid var(--border);
+  display:flex;align-items:center;justify-content:center;
+  margin:0 auto 8px;font-size:15px;position:relative;z-index:1;transition:all 0.4s;
+}
+.po-step.done .po-dot{background:var(--success);border-color:var(--success);box-shadow:0 0 18px rgba(16,185,129,0.5);}
+.po-step.active .po-dot{background:var(--primary);border-color:var(--primary);animation:stepPulse 2s infinite;}
+@keyframes stepPulse{0%,100%{box-shadow:0 0 15px rgba(99,102,241,0.55);}50%{box-shadow:0 0 30px rgba(99,102,241,0.85);}}
+.po-step-label{font-size:11px;color:var(--text2);font-weight:500;}
+.po-step.done .po-step-label,.po-step.active .po-step-label{color:var(--text);}
+
+/* ══════════ REPORT CARDS ══════════ */
+.report-card{
+  background:var(--card);border:1px solid var(--border);border-radius:var(--radius);
+  padding:20px;cursor:pointer;transition:all 0.25s;
+  display:flex;flex-direction:column;gap:8px;position:relative;overflow:hidden;
+}
+.report-card::before{
+  content:'';position:absolute;top:-60%;left:-60%;width:220%;height:220%;
+  background:conic-gradient(transparent 60%,rgba(99,102,241,0.04),transparent);
+  animation:reportSpin 7s linear infinite;opacity:0;transition:opacity 0.3s;
+}
+.report-card:hover::before{opacity:1;}
+@keyframes reportSpin{from{transform:rotate(0);}to{transform:rotate(360deg);}}
+.report-card:hover{border-color:rgba(99,102,241,0.35);transform:translateY(-5px);box-shadow:0 12px 36px rgba(99,102,241,0.16);}
+.report-icon{font-size:30px;animation:iconBob 3s ease-in-out infinite;}
+@keyframes iconBob{0%,100%{transform:translateY(0);}50%{transform:translateY(-4px);}}
+.report-title{font-size:14px;font-weight:700;}
+.report-desc{font-size:12px;color:var(--text2);line-height:1.55;}
+
+/* ══════════ DONUT ══════════ */
+.donut-wrap{position:relative;width:130px;height:130px;margin:0 auto 18px;}
+svg.donut{transform:rotate(-90deg);overflow:visible;}
+svg.donut circle{transition:stroke-dasharray 1.4s cubic-bezier(0.16,1,0.3,1),stroke-dashoffset 1.4s cubic-bezier(0.16,1,0.3,1);}
+.donut-center{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;}
+.donut-val{font-size:24px;font-weight:800;}
+.donut-sub{font-size:10px;color:var(--text2);}
+
+/* ══════════ MINI WEEKLY BARS ══════════ */
+.wk-chart{display:flex;align-items:flex-end;gap:8px;height:120px;padding:0 8px;}
+.wk-col{flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;justify-content:flex-end;height:100%;}
+.wk-bar{
+  width:100%;border-radius:6px 6px 0 0;min-height:4px;position:relative;
+  cursor:pointer;transition:opacity 0.2s;
+  animation:wkBarRise 1s cubic-bezier(0.16,1,0.3,1) both;
+}
+@keyframes wkBarRise{from{height:0!important;opacity:0;}to{opacity:1;}}
+.wk-bar:hover{opacity:0.8;}
+.wk-bar::after{
+  content:attr(data-v);position:absolute;top:-22px;left:50%;transform:translateX(-50%);
+  font-size:10px;font-weight:700;color:var(--text2);opacity:0;transition:opacity 0.2s;white-space:nowrap;
+  font-family:var(--mono);
+}
+.wk-bar:hover::after{opacity:1;}
+.wk-lbl{font-size:11px;color:var(--text2);}
+
+/* ══════════ LIVE INDICATOR ══════════ */
+.live-pill{
+  display:inline-flex;align-items:center;gap:5px;
+  font-size:10px;font-weight:700;padding:3px 9px;border-radius:20px;
+  background:rgba(16,185,129,0.1);border:1px solid rgba(16,185,129,0.25);
+  color:var(--success);letter-spacing:0.5px;
+}
+.live-dot{width:5px;height:5px;border-radius:50%;background:var(--success);animation:badgePulse 1.2s infinite;}
+
+/* ══════════ CATEGORY PILL ══════════ */
+.cat-pill{
+  background:var(--card2);border:1px solid var(--border);border-radius:12px;
+  padding:14px;text-align:center;transition:all 0.2s;cursor:pointer;
+}
+.cat-pill:hover{border-color:rgba(99,102,241,0.35);transform:translateY(-3px);box-shadow:0 8px 24px rgba(99,102,241,0.1);}
+.cat-pill-icon{font-size:22px;margin-bottom:6px;}
+.cat-pill-val{font-size:20px;font-weight:800;font-family:var(--mono);}
+.cat-pill-lbl{font-size:11px;color:var(--text2);margin-top:3px;}
+
+/* ══════════ TOAST ══════════ */
+#toast{
+  position:fixed;bottom:24px;right:24px;z-index:9999;
+  background:var(--bg2);border:1px solid var(--border2);
+  border-radius:var(--radius);padding:13px 18px;
+  display:flex;align-items:center;gap:12px;
+  box-shadow:0 12px 40px rgba(0,0,0,0.4);min-width:270px;
+  transform:translateY(110px) scale(0.9);opacity:0;
+  transition:all 0.4s cubic-bezier(0.16,1,0.3,1);
+}
+#toast.show{transform:translateY(0) scale(1);opacity:1;}
+.toast-icon{font-size:20px;}
+.toast-msg{font-size:13px;font-weight:500;flex:1;}
+
+/* ══════════ LOADER ══════════ */
+#loader{
+  position:fixed;inset:0;z-index:9000;background:var(--bg);
+  display:none;flex-direction:column;align-items:center;justify-content:center;gap:20px;
+  transition:opacity 0.5s ease;
+}
+#loader.visible{display:flex;opacity:1;}
+#loader.hiding{opacity:0;pointer-events:none;}
+.loader-ring{
+  width:72px;height:72px;position:relative;
+}
+.loader-ring::before,.loader-ring::after{
+  content:'';position:absolute;inset:0;border-radius:50%;
+}
+.loader-ring::before{
+  border:3px solid var(--border2);
+}
+.loader-ring::after{
+  border:3px solid transparent;
+  border-top-color:var(--primary);
+  border-right-color:var(--secondary);
+  animation:spin 0.9s linear infinite;
+}
+@keyframes spin{to{transform:rotate(360deg);}}
+.loader-icon{
+  position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+  font-size:28px;animation:loaderPulse 1.8s ease-in-out infinite;
+}
+@keyframes loaderPulse{0%,100%{transform:scale(1);opacity:1;}50%{transform:scale(0.85);opacity:0.7;}}
+.loader-logo{
+  font-size:26px;font-weight:900;
+  background:linear-gradient(135deg,var(--primary),var(--secondary));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+  animation:loaderPop 0.6s cubic-bezier(0.16,1,0.3,1);
+}
+@keyframes loaderPop{from{transform:scale(0.6) translateY(10px);opacity:0;}to{transform:scale(1) translateY(0);opacity:1;}}
+.loader-sub{font-size:13px;color:var(--text2);animation:fadeUp 0.6s ease 0.2s both;}
+@keyframes fadeUp{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:translateY(0);}}
+.loader-steps{display:flex;flex-direction:column;gap:8px;min-width:220px;}
+.loader-step{
+  display:flex;align-items:center;gap:10px;font-size:12px;color:var(--text2);
+  padding:8px 12px;border-radius:10px;background:var(--bg3);
+  transition:all 0.3s ease;opacity:0.4;
+}
+.loader-step.done{opacity:1;color:var(--success);}
+.loader-step.active{opacity:1;color:var(--text);background:rgba(99,102,241,0.1);border:1px solid rgba(99,102,241,0.2);animation:stepGlow 1.5s ease-in-out infinite;}
+@keyframes stepGlow{0%,100%{box-shadow:none;}50%{box-shadow:0 0 16px rgba(99,102,241,0.25);}}
+
+/* ══════════ SCROLLBAR ══════════ */
+::-webkit-scrollbar{width:5px;height:5px;}
+::-webkit-scrollbar-track{background:transparent;}
+::-webkit-scrollbar-thumb{background:var(--bg4);border-radius:3px;}
+
+/* ══════════ EXTRA ANIMATIONS ══════════ */
+@keyframes rowSlideIn{from{opacity:0;transform:translateX(-18px);}to{opacity:1;transform:translateX(0);}}
+tbody tr{animation:rowSlideIn 0.3s ease both;}
+tbody tr:hover{background:rgba(99,102,241,0.05)!important;}
+@keyframes cardEntrance{from{opacity:0;transform:translateY(22px) scale(0.98);}to{opacity:1;transform:translateY(0) scale(1);}}
+.card{animation:cardEntrance 0.4s cubic-bezier(0.16,1,0.3,1) both;}
+.stat-card{animation:cardEntrance 0.4s cubic-bezier(0.16,1,0.3,1) both;}
+.card:nth-child(1){animation-delay:0.04s;}.card:nth-child(2){animation-delay:0.09s;}.card:nth-child(3){animation-delay:0.14s;}.card:nth-child(4){animation-delay:0.19s;}
+.stat-card:nth-child(1){animation-delay:0s;}.stat-card:nth-child(2){animation-delay:0.07s;}.stat-card:nth-child(3){animation-delay:0.14s;}.stat-card:nth-child(4){animation-delay:0.21s;}
+@keyframes badgePop{0%{transform:scale(0.5);opacity:0;}70%{transform:scale(1.15);}100%{transform:scale(1);opacity:1;}}
+.badge{animation:badgePop 0.28s cubic-bezier(0.16,1,0.3,1) both;}
+.nav-item{transition:all 0.2s ease;position:relative;overflow:hidden;}
+.nav-item::after{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--primary);border-radius:0 2px 2px 0;transform:scaleY(0);transition:transform 0.25s cubic-bezier(0.16,1,0.3,1);}
+.nav-item.active::after{transform:scaleY(1);}
+.nav-item:hover:not(.active){transform:translateX(4px);}
+.nav-item.active{transform:translateX(4px);}
+.btn{position:relative;overflow:hidden;}
+.btn::after{content:'';position:absolute;inset:0;background:rgba(255,255,255,0.15);border-radius:50%;transform:scale(0);opacity:0;transition:transform 0.4s,opacity 0.4s;}
+.btn:active::after{transform:scale(4);opacity:0;transition:none;}
+.supplier-card::before{content:'';position:absolute;top:0;left:-100%;width:50%;height:100%;background:linear-gradient(90deg,transparent,rgba(255,255,255,0.04),transparent);transition:left 0.6s ease;}
+.supplier-card:hover::before{left:150%;}
+@keyframes toastSlide{from{transform:translateX(120px) scale(0.85);opacity:0;}to{transform:translateX(0) scale(1);opacity:1;}}
+#toast.show{animation:toastSlide 0.4s cubic-bezier(0.16,1,0.3,1);}
+.page.active{animation:pageReveal 0.38s cubic-bezier(0.16,1,0.3,1);}
+@keyframes pageReveal{from{opacity:0;transform:translateY(16px);}to{opacity:1;transform:translateY(0);}}
+.login-inp:focus,.form-group input:focus,.form-group select:focus,.form-group textarea:focus{transform:translateY(-1px);}
+@keyframes progressFill{from{width:0%;}to{width:100%;}}
+.modal-overlay{transition:backdrop-filter 0.3s,background 0.3s;}
+.modal-overlay.open{backdrop-filter:blur(8px);}
+@keyframes numPop{0%{transform:scale(1.3);color:var(--secondary);}100%{transform:scale(1);}}
+.counting{animation:numPop 0.4s ease;}
+/* Shimmer loading skeleton */
+@keyframes shimmer{0%{background-position:-400px 0;}100%{background-position:400px 0;}}
+.skeleton{background:linear-gradient(90deg,var(--bg3) 25%,var(--bg4) 50%,var(--bg3) 75%);background-size:400px 100%;animation:shimmer 1.5s infinite;}
+/* Glow pulse on badge */
+@keyframes badgePulse{0%,100%{opacity:1;transform:scale(1);}50%{opacity:0.5;transform:scale(1.5);}}
+/* Row hover lift */
+.supplier-card:hover{transform:translateY(-5px) scale(1.01);}
+
+/* ══════════ LOGIN PAGE ══════════ */
+#login-screen{
+  position:fixed;inset:0;z-index:8000;
+  display:flex;align-items:center;justify-content:center;
+  background:var(--bg);transition:opacity 0.5s ease;
+}
+#login-screen.hide{opacity:0;pointer-events:none;}
+.login-wrap{
+  width:420px;max-width:94vw;position:relative;z-index:1;
+  animation:loginPop 0.6s cubic-bezier(0.16,1,0.3,1);
+}
+@keyframes loginPop{from{transform:translateY(30px) scale(0.94);opacity:0;}to{transform:translateY(0) scale(1);opacity:1;}}
+.login-card{
+  background:var(--card);
+  border-radius:22px;padding:38px 36px 32px;
+}
+[data-theme="light"] .login-card{background:#fff;}
+.login-logo{display:flex;align-items:center;gap:13px;margin-bottom:28px;}
+.login-logo-icon{
+  width:50px;height:50px;border-radius:16px;
+  background:linear-gradient(135deg,var(--primary),var(--secondary));
+  display:flex;align-items:center;justify-content:center;font-size:24px;
+  box-shadow:0 0 28px var(--primary-glow);
+  animation:logoPulse 3s ease-in-out infinite;
+}
+.login-logo-text{font-size:22px;font-weight:900;background:linear-gradient(135deg,var(--primary),var(--secondary));-webkit-background-clip:text;-webkit-text-fill-color:transparent;}
+.login-logo-sub{font-size:12px;color:var(--text2);margin-top:2px;}
+.login-title{font-size:22px;font-weight:800;margin-bottom:5px;}
+.login-sub{font-size:13px;color:var(--text2);margin-bottom:26px;line-height:1.5;}
+.login-field{margin-bottom:16px;}
+.login-field label{display:block;font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:0.7px;margin-bottom:7px;}
+.login-inp-wrap{position:relative;}
+.login-inp-ico{position:absolute;left:13px;top:50%;transform:translateY(-50%);font-size:16px;pointer-events:none;}
+.login-inp{
+  width:100%;background:var(--inp);border:1px solid var(--border);
+  border-radius:11px;padding:12px 13px 12px 40px;color:var(--text);
+  font-size:14px;font-family:var(--font);outline:none;transition:all 0.22s;
+}
+.login-inp:focus{border-color:rgba(99,102,241,0.5);box-shadow:0 0 0 3px rgba(99,102,241,0.12);background:rgba(99,102,241,0.04);}
+.login-inp.error{border-color:rgba(239,68,68,0.5);box-shadow:0 0 0 3px rgba(239,68,68,0.1);}
+.login-eye{position:absolute;right:13px;top:50%;transform:translateY(-50%);cursor:pointer;font-size:16px;color:var(--text2);transition:color 0.2s;}
+.login-eye:hover{color:var(--text);}
+.login-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:22px;}
+.login-remember{display:flex;align-items:center;gap:7px;font-size:13px;color:var(--text2);cursor:pointer;}
+.login-remember input{width:15px;height:15px;cursor:pointer;accent-color:var(--primary);}
+.login-forgot{font-size:13px;color:var(--primary);cursor:pointer;font-weight:600;}
+.login-forgot:hover{text-decoration:underline;}
+.login-btn{
+  width:100%;padding:13px;border-radius:12px;border:none;
+  background:linear-gradient(135deg,var(--primary),var(--primary-dark));
+  color:#fff;font-size:15px;font-weight:700;cursor:pointer;
+  font-family:var(--font);transition:all 0.22s;
+  box-shadow:0 6px 20px rgba(99,102,241,0.45);
+  display:flex;align-items:center;justify-content:center;gap:8px;
+}
+.login-btn:hover{transform:translateY(-2px);box-shadow:0 10px 28px rgba(99,102,241,0.6);}
+.login-btn:active{transform:scale(0.97);}
+.login-btn.loading{opacity:0.75;cursor:not-allowed;}
+.login-divider{display:flex;align-items:center;gap:12px;margin:20px 0;color:var(--text2);font-size:12px;}
+.login-divider::before,.login-divider::after{content:'';flex:1;height:1px;background:var(--border);}
+.login-demo-accounts{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+.demo-acc{
+  padding:10px 12px;border-radius:10px;border:1px solid var(--border);
+  background:var(--bg3);cursor:pointer;transition:all 0.2s;text-align:center;
+}
+.demo-acc:hover{border-color:rgba(99,102,241,0.4);background:rgba(99,102,241,0.06);}
+.demo-acc-role{font-size:11px;font-weight:700;color:var(--primary);text-transform:uppercase;letter-spacing:0.5px;}
+.demo-acc-info{font-size:11px;color:var(--text2);margin-top:2px;font-family:var(--mono);}
+.login-err{
+  background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.25);
+  border-radius:10px;padding:10px 14px;font-size:13px;color:var(--danger);
+  margin-bottom:14px;display:none;animation:loginPop 0.3s ease;
+}
+.login-err.show{display:block;}
+.login-ok{
+  background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.25);
+  border-radius:10px;padding:10px 14px;font-size:13px;color:var(--success);
+  margin-bottom:14px;display:none;animation:loginPop 0.3s ease;
+}
+.login-ok.show{display:block;}
+.login-shake{animation:shake 0.4s ease;}
+@keyframes shake{0%,100%{transform:translateX(0);}20%,60%{transform:translateX(-8px);}40%,80%{transform:translateX(8px);}}
+.login-success-overlay{
+  position:absolute;inset:0;background:var(--card);border-radius:22px;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;
+  opacity:0;pointer-events:none;transition:opacity 0.4s;
+}
+.login-success-overlay.show{opacity:1;}
+.login-success-icon{font-size:48px;animation:successPop 0.5s cubic-bezier(0.16,1,0.3,1);}
+@keyframes successPop{from{transform:scale(0.3);opacity:0;}to{transform:scale(1);opacity:1;}}
+.login-success-text{font-size:18px;font-weight:700;color:var(--success);}
+.login-theme-btn{
+  position:absolute;top:20px;right:20px;
+  width:36px;height:36px;border-radius:10px;
+  background:var(--inp);border:1px solid var(--border);
+  display:flex;align-items:center;justify-content:center;
+  cursor:pointer;font-size:16px;transition:all 0.2s;
+}
+.login-theme-btn:hover{background:rgba(99,102,241,0.1);border-color:rgba(99,102,241,0.3);}
+
+/* ══════════ RESPONSIVE ══════════ */
+@media(max-width:1200px){.stats-grid{grid-template-columns:1fr 1fr;}}
+@media(max-width:900px){.grid-2,.grid-3{grid-template-columns:1fr;}}
+@media(max-width:700px){.stats-grid{grid-template-columns:1fr 1fr;}}
+</style>
+</head>
+<body>
+
+<!-- LOGIN SCREEN -->
+<div id="login-screen">
+  <div class="bg-orb orb1"></div>
+  <div class="bg-orb orb2"></div>
+  <div id="particles-login"></div>
+  <div class="login-theme-btn" onclick="toggleTheme()" id="login-theme-btn">🌙</div>
+
+  <div class="login-wrap">
+
+    <!-- ── PANEL: SIGN IN ── -->
+    <div class="login-card" id="panel-login" style="position:relative;">
+      <div class="login-logo">
+        <div class="login-logo-icon"></div>
+        <div>
+          <div class="login-logo-text">MediTrack</div>
+          <div class="login-logo-sub">Medicine Management System</div>
+        </div>
+      </div>
+      <div class="login-title">Welcome back 👋</div>
+      <div class="login-sub">Sign in to your account to continue.</div>
+
+      <div class="login-err" id="login-err"></div>
+      <div class="login-ok"  id="login-ok"></div>
+
+      <div class="login-field">
+        <label>Email Address</label>
+        <div class="login-inp-wrap">
+          <span class="login-inp-ico">📧</span>
+          <input type="email" class="login-inp" id="login-email" placeholder="you@example.com" onkeydown="if(event.key==='Enter')doLogin()">
+        </div>
+      </div>
+      <div class="login-field">
+        <label>Password</label>
+        <div class="login-inp-wrap">
+          <span class="login-inp-ico">🔒</span>
+          <input type="password" class="login-inp" id="login-pass" placeholder="Enter your password" onkeydown="if(event.key==='Enter')doLogin()">
+          <span class="login-eye" id="login-eye" onclick="togglePass('login-pass','login-eye')">👁️</span>
+        </div>
+      </div>
+
+      <div class="login-row">
+        <label class="login-remember"><input type="checkbox" id="remember-me" checked> Remember me</label>
+        <span class="login-forgot" onclick="switchPanel('forgot')">Forgot password?</span>
+      </div>
+
+      <button class="login-btn" id="login-btn" onclick="doLogin()">
+        <span id="login-btn-text">Sign In</span>
+      </button>
+
+      <div class="login-divider">don't have an account?</div>
+      <button class="login-btn" style="background:var(--bg3);color:var(--text);box-shadow:none;border:1px solid var(--border);" onclick="switchPanel('signup')">
+        ✍️ Create New Account
+      </button>
+
+      <div class="login-success-overlay" id="login-success">
+        <div class="login-success-icon">✅</div>
+        <div class="login-success-text">Login Successful!</div>
+        <div style="font-size:13px;color:var(--text2);">Loading dashboard…</div>
+      </div>
+    </div>
+
+    <!-- ── PANEL: SIGN UP ── -->
+    <div class="login-card" id="panel-signup" style="display:none;position:relative;">
+      <div class="login-logo">
+        <div class="login-logo-icon"></div>
+        <div>
+          <div class="login-logo-text">MediTrack</div>
+          <div class="login-logo-sub">Create your account</div>
+        </div>
+      </div>
+      <div class="login-title">Create Account ✍️</div>
+      <div class="login-sub">Fill in the details below. Any email address is accepted.</div>
+
+      <div class="login-err" id="signup-err"></div>
+      <div class="login-ok"  id="signup-ok"></div>
+
+      <div class="login-field">
+        <label>Full Name</label>
+        <div class="login-inp-wrap">
+          <span class="login-inp-ico">👤</span>
+          <input type="text" class="login-inp" id="su-name" placeholder="e.g. Dr. Priya Sharma" onkeydown="if(event.key==='Enter')doSignup()">
+        </div>
+      </div>
+      <div class="login-field">
+        <label>Email Address</label>
+        <div class="login-inp-wrap">
+          <span class="login-inp-ico">📧</span>
+          <input type="email" class="login-inp" id="su-email" placeholder="you@example.com" onkeydown="if(event.key==='Enter')doSignup()">
+        </div>
+      </div>
+      <div class="login-field">
+        <label>Role</label>
+        <div class="login-inp-wrap">
+          <span class="login-inp-ico">🏷️</span>
+          <select class="login-inp" id="su-role" style="padding-left:40px;">
+            <option value="Admin">Admin</option>
+            <option value="Pharmacist">Pharmacist</option>
+            <option value="Supplier">Supplier</option>
+          </select>
+        </div>
+      </div>
+      <div class="login-field">
+        <label>Password</label>
+        <div class="login-inp-wrap">
+          <span class="login-inp-ico">🔒</span>
+          <input type="password" class="login-inp" id="su-pass" placeholder="Min. 6 characters" onkeydown="if(event.key==='Enter')doSignup()">
+          <span class="login-eye" onclick="togglePass('su-pass','su-eye')" id="su-eye">👁️</span>
+        </div>
+      </div>
+      <div class="login-field">
+        <label>Confirm Password</label>
+        <div class="login-inp-wrap">
+          <span class="login-inp-ico">🔒</span>
+          <input type="password" class="login-inp" id="su-pass2" placeholder="Re-enter password" onkeydown="if(event.key==='Enter')doSignup()">
+          <span class="login-eye" onclick="togglePass('su-pass2','su-eye2')" id="su-eye2">👁️</span>
+        </div>
+      </div>
+
+      <button class="login-btn" onclick="doSignup()" style="margin-top:6px;">
+        ✅ Create Account
+      </button>
+      <div class="login-divider">already have an account?</div>
+      <button class="login-btn" style="background:var(--bg3);color:var(--text);box-shadow:none;border:1px solid var(--border);" onclick="switchPanel('login')">
+        🔑 Sign In Instead
+      </button>
+    </div>
+
+    <!-- ── PANEL: FORGOT PASSWORD ── -->
+    <div class="login-card" id="panel-forgot" style="display:none;position:relative;">
+      <div class="login-logo">
+        <div class="login-logo-icon"></div>
+        <div>
+          <div class="login-logo-text">MediTrack</div>
+          <div class="login-logo-sub">Reset your password</div>
+        </div>
+      </div>
+      <div class="login-title">Reset Password 🔑</div>
+      <div class="login-sub">Enter your registered email and choose a new password. No link needed.</div>
+
+      <div class="login-err" id="fp-err"></div>
+      <div class="login-ok"  id="fp-ok"></div>
+
+      <div class="login-field">
+        <label>Registered Email</label>
+        <div class="login-inp-wrap">
+          <span class="login-inp-ico">📧</span>
+          <input type="email" class="login-inp" id="fp-email" placeholder="you@example.com">
+        </div>
+      </div>
+      <div class="login-field">
+        <label>New Password</label>
+        <div class="login-inp-wrap">
+          <span class="login-inp-ico">🔒</span>
+          <input type="password" class="login-inp" id="fp-pass" placeholder="Min. 6 characters">
+          <span class="login-eye" onclick="togglePass('fp-pass','fp-eye')" id="fp-eye">👁️</span>
+        </div>
+      </div>
+      <div class="login-field">
+        <label>Confirm New Password</label>
+        <div class="login-inp-wrap">
+          <span class="login-inp-ico">🔒</span>
+          <input type="password" class="login-inp" id="fp-pass2" placeholder="Re-enter new password">
+          <span class="login-eye" onclick="togglePass('fp-pass2','fp-eye2')" id="fp-eye2">👁️</span>
+        </div>
+      </div>
+
+      <button class="login-btn" onclick="doResetPassword()" style="margin-top:6px;">
+        🔄 Update Password
+      </button>
+      <div class="login-divider">remembered it?</div>
+      <button class="login-btn" style="background:var(--bg3);color:var(--text);box-shadow:none;border:1px solid var(--border);" onclick="switchPanel('login')">
+        ← Back to Sign In
+      </button>
+    </div>
+
+  </div><!-- /login-wrap -->
+</div>
+
+<!-- LOADER -->
+<div id="loader">
+  <div class="loader-ring">
+    <div class="loader-icon"></div>
+  </div>
+  <div class="loader-logo">MediTrack</div>
+  <div class="loader-sub" id="loader-sub">Initializing…</div>
+  <div class="loader-steps">
+    <div class="loader-step active" id="lstep-1">⚡ Loading SQL engine…</div>
+    <div class="loader-step" id="lstep-2">🗄️ Setting up database…</div>
+    <div class="loader-step" id="lstep-3">🌱 Loading medicine data…</div>
+    <div class="loader-step" id="lstep-4">✅ Almost ready…</div>
+  </div>
+</div>
+
+<!-- BACKGROUND -->
+<div class="bg-orb orb1"></div>
+<div class="bg-orb orb2"></div>
+<div class="bg-orb orb3"></div>
+<div id="particles"></div>
+
+<!-- TOAST -->
+<div id="toast">
+  <span class="toast-icon" id="toast-icon">✅</span>
+  <span class="toast-msg" id="toast-msg">Done!</span>
+</div>
+
+<!-- MODAL -->
+<div class="modal-overlay" id="modal">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title" id="modal-title">Title</span>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-body" id="modal-body"></div>
+    <div class="modal-footer" id="modal-footer"></div>
+  </div>
+</div>
+
+<div class="app">
+<!-- ═══ SIDEBAR ═══ -->
+<aside class="sidebar">
+  <div class="sidebar-logo">
+    <div>
+      <div class="logo-text">MediTrack</div>
+      <div class="logo-sub">Medicine Management</div>
+    </div>
+  </div>
+  <nav class="sidebar-nav">
+    <div class="nav-section">
+      <div class="nav-section-title">Main</div>
+      <div class="nav-item active" onclick="showPage('dashboard',this)">
+        <span class="nav-icon">🏠</span>Dashboard
+      </div>
+    </div>
+    <div class="nav-section">
+      <div class="nav-section-title">Core Modules</div>
+      <div class="nav-item" onclick="showPage('users',this)">
+        <span class="nav-icon">👥</span>User Management
+      </div>
+      <div class="nav-item" onclick="showPage('medicines',this)">
+        <span class="nav-icon">🏥</span>Medicine Management
+      </div>
+      <div class="nav-item" onclick="showPage('batches',this)">
+        <span class="nav-icon">📦</span>Batch &amp; Stock
+      </div>
+      <div class="nav-item" onclick="showPage('alerts',this)">
+        <span class="nav-icon">🔔</span>Alerts
+        <span class="nav-badge" id="alert-badge">0</span>
+      </div>
+      <div class="nav-item" onclick="showPage('suppliers',this)">
+        <span class="nav-icon">🚚</span>Supplier Management
+      </div>
+      <div class="nav-item" onclick="showPage('purchase',this)">
+        <span class="nav-icon">🧾</span>Purchase Orders
+      </div>
+      <div class="nav-item" onclick="showPage('reports',this)">
+        <span class="nav-icon">📊</span>Reports
+      </div>
+    </div>
+  </nav>
+  <div class="sidebar-footer">
+    <div class="user-card" style="margin-bottom:8px;">
+      <div class="user-avatar">A</div>
+      <div>
+        <div class="user-name">Admin User</div>
+        <div class="user-role">Administrator</div>
+      </div>
+      <span style="margin-left:auto;color:var(--text2);font-size:14px;">⚙️</span>
+    </div>
+    <button class="btn btn-outline" style="width:100%;font-size:12px;padding:8px;" onclick="logout()">🚪 Sign Out</button>
+  </div>
+</aside>
+
+<!-- ═══ MAIN ═══ -->
+<div class="main">
+  <div class="topbar">
+    <div class="page-title" id="page-title">Dashboard</div>
+    <div class="topbar-actions">
+      <div class="topbar-btn" id="theme-btn" onclick="toggleTheme()" title="Toggle Theme">🌙</div>
+      <div class="topbar-btn" onclick="showPage('alerts',document.querySelectorAll('.nav-item')[4]);document.getElementById('notif-dot').style.display='none';">
+        🔔<span class="notif-dot" id="notif-dot"></span>
+      </div>
+    </div>
+  </div>
+
+  <div class="content">
+
+    <!-- ── DASHBOARD ── -->
+    <div class="page active" id="page-dashboard">
+      <div class="stats-grid" id="stats-grid">
+        <div class="stat-card blue">
+          <span class="stat-icon">💊</span>
+          <div class="stat-val" id="s-medicines">—</div>
+          <div class="stat-label">Total Medicines</div>
+          <div class="stat-change up" id="s-medicines-sub">Loading…</div>
+          <div class="progress-bar"><div class="progress-fill" id="s-medicines-bar" style="width:80%;background:var(--primary);"></div></div>
+        </div>
+        <div class="stat-card green">
+          <span class="stat-icon">📦</span>
+          <div class="stat-val" id="s-batches">—</div>
+          <div class="stat-label">Active Batches</div>
+          <div class="stat-change up" id="s-batches-sub">Loading…</div>
+          <div class="progress-bar"><div class="progress-fill" id="s-batches-bar" style="width:65%;background:var(--success);"></div></div>
+        </div>
+        <div class="stat-card yellow">
+          <span class="stat-icon">⏰</span>
+          <div class="stat-val" id="s-expiring">—</div>
+          <div class="stat-label">Expiring in 30 Days</div>
+          <div class="stat-change down" id="s-expiring-sub">Loading…</div>
+          <div class="progress-bar"><div class="progress-fill" id="s-expiring-bar" style="background:var(--warning);"></div></div>
+        </div>
+        <div class="stat-card red">
+          <span class="stat-icon">📉</span>
+          <div class="stat-val" id="s-lowstock">—</div>
+          <div class="stat-label">Low Stock Items</div>
+          <div class="stat-change down" id="s-lowstock-sub">Loading…</div>
+          <div class="progress-bar"><div class="progress-fill" id="s-lowstock-bar" style="background:var(--danger);"></div></div>
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">🔔 Live Alerts
+              <span class="live-pill"><span class="live-dot"></span>LIVE</span>
+            </div>
+            <button class="btn btn-outline btn-sm" onclick="showPage('alerts',document.querySelectorAll('.nav-item')[4])">View All</button>
+          </div>
+          <div class="card-body" id="dash-alerts"></div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">📊 Stock Health</div>
+            <span class="live-pill"><span class="live-dot"></span>SQL</span>
+          </div>
+          <div class="card-body">
+            <div class="donut-wrap">
+              <svg class="donut" width="130" height="130" viewBox="0 0 130 130">
+                <circle cx="65" cy="65" r="52" fill="none" stroke="var(--bg3)" stroke-width="14"/>
+                <circle id="d-ok"   cx="65" cy="65" r="52" fill="none" stroke="#10b981" stroke-width="14" stroke-dasharray="0 327" stroke-linecap="round"/>
+                <circle id="d-warn" cx="65" cy="65" r="52" fill="none" stroke="#f59e0b" stroke-width="14" stroke-dasharray="0 327" stroke-linecap="round"/>
+                <circle id="d-exp"  cx="65" cy="65" r="52" fill="none" stroke="#ef4444" stroke-width="14" stroke-dasharray="0 327" stroke-linecap="round"/>
+              </svg>
+              <div class="donut-center">
+                <div class="donut-val" id="d-total">0</div>
+                <div class="donut-sub">Batches</div>
+              </div>
+            </div>
+            <div id="d-legend"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Top 8 Medicines by Stock</div>
+          <span class="live-pill"><span class="live-dot"></span>LIVE SQL</span>
+        </div>
+        <div class="card-body" id="top-medicines"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-header"><div class="card-title">🏷️ Category Distribution</div></div>
+        <div class="card-body"><div class="grid-4" id="cat-grid"></div></div>
+      </div>
+    </div>
+
+    <!-- ── USERS ── -->
+    <div class="page" id="page-users">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">👥 User Management</div>
+          <button class="btn btn-primary" onclick="openModal('addUser')">+ Add User</button>
+        </div>
+        <div class="card-body" style="padding-bottom:0;">
+          <div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;">
+            <div class="tabs" style="margin-bottom:0;" id="user-tabs">
+              <div class="tab active" onclick="filterUsers('all',this)">All Users</div>
+              <div class="tab" onclick="filterUsers('Admin',this)">Admin</div>
+              <div class="tab" onclick="filterUsers('Pharmacist',this)">Pharmacist</div>
+              <div class="tab" onclick="filterUsers('Supplier',this)">Supplier</div>
+            </div>
+            <div class="search-box" style="margin-left:auto;">
+              <span class="search-icon">🔍</span>
+              <input type="text" placeholder="Search users…" oninput="searchUsers(this.value)">
+            </div>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>User</th><th>Email</th><th>Role</th><th>Status</th><th>Phone</th><th>Actions</th></tr></thead>
+            <tbody id="users-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── MEDICINES ── -->
+    <div class="page" id="page-medicines">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Medicine Management</div>
+          <button class="btn btn-primary" onclick="openModal('addMedicine')">+ Add Medicine</button>
+        </div>
+        <div class="card-body" style="padding-bottom:0;">
+          <div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;align-items:center;">
+            <div class="search-box">
+              <span class="search-icon">🔍</span>
+              <input type="text" placeholder="Search medicines…" oninput="searchMeds(this.value)">
+            </div>
+            <select style="width:165px;" onchange="filterMedCat(this.value)">
+              <option value="">All Categories</option>
+              <option>Analgesics</option><option>Antibiotics</option><option>Antidiabetics</option>
+              <option>Antacids</option><option>Cardiovascular</option><option>Respiratory</option>
+              <option>Vitamins</option><option>Neurological</option><option>Other</option>
+            </select>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Medicine</th><th>Category</th><th>Unit</th><th>Storage</th><th>Min Threshold</th><th>Price (₹)</th><th>Status</th><th>Actions</th></tr></thead>
+            <tbody id="medicines-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── BATCHES ── -->
+    <div class="page" id="page-batches">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">📦 Batch &amp; Stock Management</div>
+          <div style="display:flex;gap:8px;">
+            <button class="btn btn-success" onclick="openModal('issueMed')">📤 Issue Medicine</button>
+            <button class="btn btn-primary" onclick="openModal('addBatch')">+ Add Batch</button>
+          </div>
+        </div>
+        <div class="card-body" style="padding-bottom:0;">
+          <div style="display:flex;gap:10px;margin-bottom:12px;flex-wrap:wrap;align-items:center;">
+            <div class="tabs" id="batch-tabs" style="margin-bottom:0;">
+              <div class="tab active" onclick="filterBatches('all',this)">All Batches</div>
+              <div class="tab" onclick="filterBatches('Active',this)">Active</div>
+              <div class="tab" onclick="filterBatches('Near Expiry',this)">Near Expiry</div>
+              <div class="tab" onclick="filterBatches('Expired',this)">Expired</div>
+              <div class="tab" onclick="filterBatches('Low Stock',this)">Low Stock</div>
+            </div>
+            <div class="search-box" style="margin-left:auto;">
+              <span class="search-icon">🔍</span>
+              <input type="text" placeholder="Search batches…" oninput="searchBatches(this.value)">
+            </div>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Medicine</th><th>Batch No.</th><th>Expiry</th><th>Qty</th><th>Supplier</th><th>Storage</th><th>Status</th><th>Actions</th></tr></thead>
+            <tbody id="batches-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── ALERTS ── -->
+    <div class="page" id="page-alerts">
+      <div class="grid-2" style="margin-bottom:18px;">
+        <div class="stat-card red">
+          <span class="stat-icon">🚨</span>
+          <div class="stat-val" id="a-expired">0</div>
+          <div class="stat-label">Expired Batches</div>
+        </div>
+        <div class="stat-card yellow">
+          <span class="stat-icon">⏰</span>
+          <div class="stat-val" id="a-near">0</div>
+          <div class="stat-label">Expiring within 30 Days</div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">🔔 All Active Alerts
+            <span class="live-pill"><span class="live-dot"></span>LIVE</span>
+          </div>
+          <div style="display:flex;gap:8px;align-items:center;">
+            <div class="search-box" style="width:200px;">
+              <span class="search-icon">🔍</span>
+              <input type="text" placeholder="Search alerts…" oninput="searchAlerts(this.value)">
+            </div>
+            <button class="btn btn-outline btn-sm" onclick="renderAlerts();showToast('Alerts refreshed','🔄')">Refresh</button>
+          </div>
+        </div>
+        <div class="card-body" id="alerts-list"></div>
+      </div>
+    </div>
+
+    <!-- ── SUPPLIERS ── -->
+    <div class="page" id="page-suppliers">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">🚚 Supplier Management</div>
+          <div style="display:flex;gap:8px;align-items:center;">
+            <div class="search-box" style="width:200px;">
+              <span class="search-icon">🔍</span>
+              <input type="text" placeholder="Search suppliers…" oninput="searchSuppliers(this.value)">
+            </div>
+            <button class="btn btn-primary" onclick="openModal('addSupplier')">+ Add Supplier</button>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="grid-3" id="suppliers-grid"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── PURCHASE ORDERS ── -->
+    <div class="page" id="page-purchase">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">🧾 Purchase Orders</div>
+          <button class="btn btn-primary" onclick="openModal('addPO')">+ New Order</button>
+        </div>
+        <div class="card-body" style="padding-bottom:0;">
+          <div style="display:flex;gap:10px;margin-bottom:12px;flex-wrap:wrap;align-items:center;">
+            <div class="tabs" id="po-tabs" style="margin-bottom:0;">
+              <div class="tab active" onclick="filterPOs('all',this)">All Orders</div>
+              <div class="tab" onclick="filterPOs('Pending',this)">Pending</div>
+              <div class="tab" onclick="filterPOs('Confirmed',this)">Confirmed</div>
+              <div class="tab" onclick="filterPOs('Delivered',this)">Delivered</div>
+            </div>
+            <div class="search-box" style="margin-left:auto;">
+              <span class="search-icon">🔍</span>
+              <input type="text" placeholder="Search orders…" oninput="searchPOs(this.value)">
+            </div>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>PO Number</th><th>Supplier</th><th>Items</th><th>Total</th><th>Status</th><th>Date</th><th>Actions</th></tr></thead>
+            <tbody id="po-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── REPORTS ── -->
+    <div class="page" id="page-reports">
+      <div class="grid-3" style="margin-bottom:20px;">
+        <div class="report-card" onclick="openModal('report','expiry')">
+          <div class="report-icon">📅</div>
+          <div class="report-title">Expiry Report</div>
+          <div class="report-desc">Medicines expiring in 7, 15, or 30 days with batch details.</div>
+          <button class="btn btn-primary btn-sm" style="width:fit-content;margin-top:4px;">Generate</button>
+        </div>
+        <div class="report-card" onclick="openModal('report','stock')">
+          <div class="report-icon">📦</div>
+          <div class="report-title">Stock Summary</div>
+          <div class="report-desc">Complete stock overview with quantity levels for all medicines.</div>
+          <button class="btn btn-success btn-sm" style="width:fit-content;margin-top:4px;">Generate</button>
+        </div>
+        <div class="report-card" onclick="openModal('report','purchase')">
+          <div class="report-icon">🧾</div>
+          <div class="report-title">Purchase Report</div>
+          <div class="report-desc">Supplier-wise purchase history and delivery analysis.</div>
+          <button class="btn btn-warning btn-sm" style="width:fit-content;margin-top:4px;">Generate</button>
+        </div>
+        <div class="report-card" onclick="openModal('report','usage')">
+          <div class="report-icon">📊</div>
+          <div class="report-title">Usage Report</div>
+          <div class="report-desc">Daily and weekly medicine issuance trends.</div>
+          <button class="btn btn-outline btn-sm" style="width:fit-content;margin-top:4px;">Generate</button>
+        </div>
+        <div class="report-card" onclick="openModal('report','audit')">
+          <div class="report-icon">🔍</div>
+          <div class="report-title">Audit Report</div>
+          <div class="report-desc">Full log of stock changes and user activity.</div>
+          <button class="btn btn-outline btn-sm" style="width:fit-content;margin-top:4px;">Generate</button>
+        </div>
+        <div class="report-card" onclick="openModal('report','supplier')">
+          <div class="report-icon">🚚</div>
+          <div class="report-title">Supplier Report</div>
+          <div class="report-desc">Performance, delivery timelines and order history.</div>
+          <button class="btn btn-outline btn-sm" style="width:fit-content;margin-top:4px;">Generate</button>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">📈 Weekly Issuance Trend</div>
+          <span class="live-pill"><span class="live-dot"></span>Live Data</span>
+        </div>
+        <div class="card-body">
+          <div class="wk-chart" id="wk-chart"></div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /content -->
+</div><!-- /main -->
+</div><!-- /app -->
+
+<script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script>
+// ═══════════════════════════════════════════════
+// PARTICLES
+// ═══════════════════════════════════════════════
+(function(){
+  const c=document.getElementById('particles');
+  for(let i=0;i<28;i++){
+    const p=document.createElement('div');
+    p.className='particle';
+    p.style.cssText=`left:${Math.random()*100}%;width:${Math.random()*3+1}px;height:${Math.random()*3+1}px;animation-duration:${Math.random()*18+10}s;animation-delay:${Math.random()*12}s;`;
+    c.appendChild(p);
+  }
+})();
+
+// ═══════════════════════════════════════════════
+// THEME
+// ═══════════════════════════════════════════════
+let dark=(localStorage.getItem('mt-theme')||'dark')==='dark';
+function applyTheme(){
+  document.documentElement.setAttribute('data-theme',dark?'dark':'light');
+  document.getElementById('theme-btn').textContent=dark?'🌙':'☀️';
+  const lb=document.getElementById('login-theme-btn');
+  if(lb) lb.textContent=dark?'🌙':'☀️';
+}
+function toggleTheme(){
+  dark=!dark;
+  localStorage.setItem('mt-theme',dark?'dark':'light');
+  applyTheme();
+  showToast(dark?'Dark mode activated':'Light mode activated',dark?'🌙':'☀️');
+}
+applyTheme();
+
+// ═══════════════════════════════════════════════
+// SQL.JS — SQLite in Browser
+// ═══════════════════════════════════════════════
+let SQL, DB;
+let _sqlReady = false;
+let _sqlPromise = null;
+
+// Pre-load WASM immediately on page load (before user even logs in)
+function preloadSQL() {
+  _sqlPromise = initSqlJs({
+    locateFile: f => `https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.2/${f}`
+  }).then(sql => {
+    SQL = sql;
+    _sqlReady = true;
+  }).catch(e => {
+    console.error('SQL preload failed:', e);
+    _sqlReady = false;
+  });
+  return _sqlPromise;
+}
+preloadSQL(); // Start immediately — runs in background while user is on login screen
+
+async function initSQL(){
+  // If preload not done yet, wait for it
+  if (!_sqlReady && _sqlPromise) {
+    await _sqlPromise;
+  }
+  // If still not ready (preload failed), try one more time
+  if (!SQL) {
+    SQL = await initSqlJs({
+      locateFile: f => `https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.2/${f}`
+    });
+  }
+  if (DB) return; // Already initialized — don't re-seed
+  const saved = localStorage.getItem('meditrack_db_v3');
+  if(saved){
+    const buf=Uint8Array.from(atob(saved),c=>c.charCodeAt(0));
+    DB=new SQL.Database(buf);
+  } else {
+    DB=new SQL.Database();
+    createSchema();
+    seedData();
+    saveDB();
+  }
+}
+
+function saveDB(){
+  const data=DB.export();
+  const b64=btoa(String.fromCharCode(...data));
+  try{ localStorage.setItem('meditrack_db_v3',b64); }catch(e){}
+}
+
+function createSchema(){
+  DB.run(`
+    CREATE TABLE IF NOT EXISTS users(
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT, email TEXT, role TEXT, status TEXT, phone TEXT, avatar TEXT
+    );
+    CREATE TABLE IF NOT EXISTS medicines(
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT, category TEXT, unit TEXT, storage TEXT,
+      threshold INTEGER DEFAULT 50, price REAL DEFAULT 0, status TEXT DEFAULT 'Active'
+    );
+    CREATE TABLE IF NOT EXISTS batches(
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      medicine_id INTEGER, medicine TEXT, batch TEXT,
+      expiry TEXT, qty INTEGER, supplier TEXT, storage TEXT
+    );
+    CREATE TABLE IF NOT EXISTS suppliers(
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT, contact TEXT, email TEXT, city TEXT,
+      orders INTEGER DEFAULT 0, rating INTEGER DEFAULT 5, status TEXT
+    );
+    CREATE TABLE IF NOT EXISTS purchase_orders(
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      po_number TEXT, supplier TEXT, items INTEGER,
+      total REAL, status TEXT, date TEXT
+    );
+  `);
+}
+
+// SQL helpers
+function sqlAll(q,p=[]){
+  try{
+    const s=DB.prepare(q); s.bind(p);
+    const r=[];
+    while(s.step()) r.push(s.getAsObject());
+    s.free(); return r;
+  }catch(e){console.error(e,q);return[];}
+}
+function sqlRun(q,p=[]){ try{DB.run(q,p);}catch(e){console.error(e);} saveDB(); }
+function sqlOne(q,p=[]){ return sqlAll(q,p)[0]||null; }
+
+function daysFromNow(n){
+  const d=new Date(); d.setDate(d.getDate()+n);
+  return d.toISOString().split('T')[0];
+}
+
+// ═══════════════════════════════════════════════
+// SEED DATA — 30 medicines
+// ═══════════════════════════════════════════════
+function seedData(){
+  const users=[
+    ['Dr. Priya Sharma','priya@meditrack.com','Admin','Active','9876500001','P'],
+    ['Rajesh Kumar','rajesh@meditrack.com','Pharmacist','Active','9876500002','R'],
+    ['Meena Patel','meena@meditrack.com','Pharmacist','Active','9876500003','M'],
+    ['Arjun Verma','arjun@meditrack.com','Pharmacist','Active','9876500005','A'],
+    ['Kavitha Nair','kavitha@meditrack.com','Pharmacist','Active','9876500006','K'],
+    ['Deepak Rao','deepak@meditrack.com','Pharmacist','Active','9876500007','D'],
+    ['Sunita Joshi','sunita@meditrack.com','Pharmacist','Inactive','9876500008','S'],
+    ['Vijay Menon','vijay@meditrack.com','Pharmacist','Active','9876500009','V'],
+    ['Suresh Pharma Ltd.','suresh@pharma.com','Supplier','Active','9876500004','S'],
+    ['Anil Medicorp','anil@medicorp.com','Supplier','Active','9123456789','A'],
+  ];
+  users.forEach(u=>sqlRun('INSERT INTO users(name,email,role,status,phone,avatar) VALUES(?,?,?,?,?,?)',u));
+
+  const meds=[
+    // Analgesics — realistic strip/unit prices in ₹
+    ['Paracetamol 500mg','Analgesics','Tablet','Room Temp',100,1.20,'Active'],
+    ['Ibuprofen 400mg','Analgesics','Tablet','Room Temp',80,2.80,'Active'],
+    ['Aspirin 75mg','Analgesics','Tablet','Room Temp',60,1.50,'Active'],
+    ['Diclofenac 50mg','Analgesics','Tablet','Room Temp',70,3.50,'Active'],
+    // Antibiotics
+    ['Amoxicillin 250mg','Antibiotics','Capsule','Room Temp',80,5.20,'Active'],
+    ['Azithromycin 500mg','Antibiotics','Tablet','Room Temp',60,18.50,'Active'],
+    ['Ciprofloxacin 500mg','Antibiotics','Tablet','Room Temp',50,9.80,'Active'],
+    ['Doxycycline 100mg','Antibiotics','Capsule','Room Temp',40,7.40,'Active'],
+    ['Cephalexin 500mg','Antibiotics','Capsule','Room Temp',55,8.20,'Active'],
+    // Antidiabetics
+    ['Metformin 850mg','Antidiabetics','Tablet','Room Temp',50,3.60,'Active'],
+    ['Glibenclamide 5mg','Antidiabetics','Tablet','Room Temp',40,2.40,'Active'],
+    ['Sitagliptin 100mg','Antidiabetics','Tablet','Room Temp',30,62.00,'Active'],
+    ['Insulin Glargine 100IU','Antidiabetics','Vial','Refrigerated',20,520.00,'Active'],
+    // Antacids
+    ['Omeprazole 20mg','Antacids','Capsule','Room Temp',60,5.80,'Active'],
+    ['Pantoprazole 40mg','Antacids','Tablet','Room Temp',50,7.20,'Active'],
+    ['Ranitidine 150mg','Antacids','Tablet','Room Temp',70,3.10,'Active'],
+    ['Domperidone 10mg','Antacids','Tablet','Room Temp',45,4.50,'Active'],
+    // Cardiovascular
+    ['Atorvastatin 10mg','Cardiovascular','Tablet','Room Temp',40,9.20,'Active'],
+    ['Amlodipine 5mg','Cardiovascular','Tablet','Room Temp',50,5.60,'Active'],
+    ['Losartan 50mg','Cardiovascular','Tablet','Room Temp',45,8.40,'Active'],
+    ['Atenolol 50mg','Cardiovascular','Tablet','Room Temp',40,4.20,'Active'],
+    // Respiratory
+    ['Salbutamol 2mg','Respiratory','Tablet','Room Temp',60,2.80,'Active'],
+    ['Montelukast 10mg','Respiratory','Tablet','Room Temp',35,18.00,'Active'],
+    ['Budesonide Inhaler 200mcg','Respiratory','Inhaler','Room Temp',15,320.00,'Active'],
+    // Vitamins
+    ['Vitamin D3 1000IU','Vitamins','Capsule','Room Temp',80,4.80,'Active'],
+    ['Vitamin B12 500mcg','Vitamins','Tablet','Room Temp',70,3.60,'Active'],
+    ['Ferrous Sulphate 200mg','Vitamins','Tablet','Room Temp',60,2.20,'Active'],
+    // Neurological
+    ['Amlodipine 2.5mg','Neurological','Tablet','Room Temp',30,4.40,'Active'],
+    ['Gabapentin 300mg','Neurological','Capsule','Room Temp',30,24.00,'Active'],
+    ['Alprazolam 0.25mg','Neurological','Tablet','Room Temp',25,3.20,'Active'],
+  ];
+  meds.forEach(m=>sqlRun('INSERT INTO medicines(name,category,unit,storage,threshold,price,status) VALUES(?,?,?,?,?,?,?)',m));
+
+  const d=daysFromNow;
+  const batches=[
+    [1,'Paracetamol 500mg','PC-2024-B12',d(-60),240,'Suresh Pharma Ltd.','Room Temp'],
+    [1,'Paracetamol 500mg','PC-2025-A01',d(22),850,'Suresh Pharma Ltd.','Room Temp'],
+    [2,'Ibuprofen 400mg','IB-2025-A01',d(180),620,'Anil Medicorp','Room Temp'],
+    [2,'Ibuprofen 400mg','IB-2025-B01',d(12),90,'Anil Medicorp','Room Temp'],
+    [3,'Aspirin 75mg','AS-2025-A01',d(300),500,'BioMed Distributors','Room Temp'],
+    [4,'Diclofenac 50mg','DC-2025-A01',d(150),380,'Suresh Pharma Ltd.','Room Temp'],
+    [5,'Amoxicillin 250mg','AM-2025-A04',d(7),180,'Anil Medicorp','Room Temp'],
+    [5,'Amoxicillin 250mg','AM-2025-B01',d(200),450,'Anil Medicorp','Room Temp'],
+    [6,'Azithromycin 500mg','AZ-2025-A01',d(365),200,'BioMed Distributors','Room Temp'],
+    [7,'Ciprofloxacin 500mg','CF-2025-A01',d(28),140,'Suresh Pharma Ltd.','Room Temp'],
+    [8,'Doxycycline 100mg','DX-2025-A01',d(400),260,'Anil Medicorp','Room Temp'],
+    [9,'Cephalexin 500mg','CX-2025-A01',d(280),18,'BioMed Distributors','Room Temp'],
+    [10,'Metformin 850mg','MF-2025-B02',d(200),15,'Suresh Pharma Ltd.','Room Temp'],
+    [10,'Metformin 850mg','MF-2025-C01',d(380),600,'Suresh Pharma Ltd.','Room Temp'],
+    [11,'Glibenclamide 5mg','GB-2025-A01',d(340),420,'Anil Medicorp','Room Temp'],
+    [12,'Sitagliptin 100mg','ST-2025-A01',d(290),80,'BioMed Distributors','Room Temp'],
+    [13,'Insulin Glargine 100IU','IN-2025-R01',d(105),48,'Anil Medicorp','Refrigerated'],
+    [13,'Insulin Glargine 100IU','IN-2024-R02',d(-10),12,'Anil Medicorp','Refrigerated'],
+    [14,'Omeprazole 20mg','OM-2025-C01',d(280),420,'Suresh Pharma Ltd.','Room Temp'],
+    [15,'Pantoprazole 40mg','PT-2025-A01',d(320),310,'BioMed Distributors','Room Temp'],
+    [15,'Pantoprazole 40mg','PT-2024-X01',d(-20),40,'BioMed Distributors','Room Temp'],
+    [16,'Ranitidine 150mg','RN-2025-A01',d(18),200,'Anil Medicorp','Room Temp'],
+    [17,'Domperidone 10mg','DP-2025-A01',d(260),350,'Suresh Pharma Ltd.','Room Temp'],
+    [18,'Atorvastatin 10mg','AT-2025-D01',d(320),310,'Anil Medicorp','Room Temp'],
+    [19,'Amlodipine 5mg','AL-2025-A01',d(370),25,'BioMed Distributors','Room Temp'],
+    [20,'Losartan 50mg','LO-2025-A01',d(240),480,'Suresh Pharma Ltd.','Room Temp'],
+    [21,'Atenolol 50mg','AE-2025-A01',d(390),360,'Anil Medicorp','Room Temp'],
+    [22,'Salbutamol 2mg','SB-2025-A01',d(300),540,'BioMed Distributors','Room Temp'],
+    [23,'Montelukast 10mg','MK-2025-A01',d(14),70,'Suresh Pharma Ltd.','Room Temp'],
+    [24,'Budesonide Inhaler 200mcg','BD-2025-A01',d(420),30,'Anil Medicorp','Room Temp'],
+    [25,'Vitamin D3 1000IU','VD-2025-A01',d(500),900,'BioMed Distributors','Room Temp'],
+    [26,'Vitamin B12 500mcg','VB-2025-A01',d(480),750,'Suresh Pharma Ltd.','Room Temp'],
+    [27,'Ferrous Sulphate 200mg','FS-2025-A01',d(350),620,'Anil Medicorp','Room Temp'],
+    [27,'Ferrous Sulphate 200mg','FS-2024-Z01',d(-5),110,'Anil Medicorp','Room Temp'],
+    [28,'Amlodipine 2.5mg','AM25-2025-A01',d(310),22,'BioMed Distributors','Room Temp'],
+    [29,'Gabapentin 300mg','GP-2025-A01',d(270),190,'Suresh Pharma Ltd.','Room Temp'],
+    [30,'Alprazolam 0.25mg','AX-2025-A01',d(220),8,'BioMed Distributors','Room Temp'],
+  ];
+  batches.forEach(b=>sqlRun('INSERT INTO batches(medicine_id,medicine,batch,expiry,qty,supplier,storage) VALUES(?,?,?,?,?,?,?)',b));
+
+  const sups=[
+    ['Suresh Pharma Ltd.','9876543210','suresh@pharma.com','Mumbai',24,5,'Active'],
+    ['Anil Medicorp','9123456789','anil@medicorp.com','Delhi',18,4,'Active'],
+    ['BioMed Distributors','9988776655','bio@medist.com','Chennai',12,4,'Active'],
+    ['HealthFirst Supply','9871234567','hf@healthfirst.com','Bangalore',8,3,'Active'],
+    ['MedPlus Wholesale','9845001234','medplus@wholesale.com','Hyderabad',15,5,'Active'],
+    ['CureChem Pharma','9900112233','curechem@pharma.com','Pune',10,4,'Active'],
+    ['Lifeline Distributors','9811223344','info@lifelinedist.com','Kolkata',7,3,'Inactive'],
+    ['Apollo MedSupply','9922334455','apollo@medsupply.com','Chennai',20,5,'Active'],
+  ];
+  sups.forEach(s=>sqlRun('INSERT INTO suppliers(name,contact,email,city,orders,rating,status) VALUES(?,?,?,?,?,?,?)',s));
+
+  const pos=[
+    ['PO-2025-001','Suresh Pharma Ltd.',8,18450,'Delivered',d(-10)],
+    ['PO-2025-002','Anil Medicorp',5,9200,'Delivered',d(-7)],
+    ['PO-2025-003','BioMed Distributors',10,26800,'Confirmed',d(-3)],
+    ['PO-2025-004','Suresh Pharma Ltd.',6,14300,'Confirmed',d(-1)],
+    ['PO-2025-005','HealthFirst Supply',4,7600,'Pending',d(0)],
+    ['PO-2025-006','Anil Medicorp',7,11900,'Pending',d(0)],
+  ];
+  pos.forEach(p=>sqlRun('INSERT INTO purchase_orders(po_number,supplier,items,total,status,date) VALUES(?,?,?,?,?,?)',p));
+}
+
+// ═══════════════════════════════════════════════
+// BATCH STATUS
+// ═══════════════════════════════════════════════
+function bStatus(expiry,qty,threshold){
+  const today=new Date(),exp=new Date(expiry),diff=Math.ceil((exp-today)/864e5);
+  if(diff<0) return 'Expired';
+  if(diff<=30) return 'Near Expiry';
+  if(qty<threshold) return 'Low Stock';
+  return 'Active';
+}
+
+// ═══════════════════════════════════════════════
+// ALERTS ENGINE
+// ═══════════════════════════════════════════════
+function computeAlerts(){
+  const batches=sqlAll('SELECT b.*,m.threshold FROM batches b LEFT JOIN medicines m ON b.medicine_id=m.id');
+  const today=new Date(),alerts=[];
+  batches.forEach(b=>{
+    const exp=new Date(b.expiry),diff=Math.ceil((exp-today)/864e5);
+    if(diff<0){
+      alerts.push({type:'danger',icon:'🚨',title:`${b.medicine} — EXPIRED`,desc:`Batch #${b.batch} · ${b.qty} units · Expired ${b.expiry}`});
+    } else if(diff<=7){
+      alerts.push({type:'danger',icon:'⏰',title:`${b.medicine} — Expires in ${diff} day(s)`,desc:`Batch #${b.batch} · ${b.qty} units · Expiry: ${b.expiry}`});
+    } else if(diff<=30){
+      alerts.push({type:'warning',icon:'⏰',title:`${b.medicine} — Expires in ${diff} days`,desc:`Batch #${b.batch} · ${b.qty} units · Expiry: ${b.expiry}`});
+    }
+    if(b.threshold && b.qty < b.threshold && diff>=0){
+      alerts.push({type:'warning',icon:'📉',title:`${b.medicine} — Low Stock`,desc:`Current: ${b.qty} units · Min threshold: ${b.threshold} units`});
+    }
+  });
+  // Count expired (title contains EXPIRED) and near-expiry (title contains Expires)
+  const expiredCount=alerts.filter(a=>a.title.includes('EXPIRED')).length;
+  const nearCount=alerts.filter(a=>a.title.includes('Expires')).length;
+  // Safely update badge and stat counters (elements may not exist on current page)
+  const badgeEl=document.getElementById('alert-badge');
+  if(badgeEl) badgeEl.textContent=alerts.length;
+  const expEl=document.getElementById('a-expired');
+  if(expEl) expEl.textContent=expiredCount;
+  const nearEl=document.getElementById('a-near');
+  if(nearEl) nearEl.textContent=nearCount;
+  const dot=document.getElementById('notif-dot');
+  if(dot) dot.style.display=alerts.length>0?'block':'none';
+  return alerts;
+}
+
+// ═══════════════════════════════════════════════
+// ANIMATE NUMBER
+// ═══════════════════════════════════════════════
+function animNum(id,target){
+  const el=document.getElementById(id);
+  if(!el) return;
+  const start=parseInt(el.textContent)||0;
+  const diff=target-start;
+  const dur=700;
+  const t0=performance.now();
+  function step(t){
+    const p=Math.min((t-t0)/dur,1);
+    const ease=1-Math.pow(1-p,3);
+    el.textContent=Math.round(start+diff*ease);
+    if(p<1) requestAnimationFrame(step);
+    else{el.textContent=target; el.classList.add('flash'); setTimeout(()=>el.classList.remove('flash'),500);}
+  }
+  requestAnimationFrame(step);
+}
+
+// ═══════════════════════════════════════════════
+// DASHBOARD (LIVE SQL)
+// ═══════════════════════════════════════════════
+function renderDashboard(){
+  const meds=sqlAll('SELECT * FROM medicines');
+  const batches=sqlAll('SELECT b.*,m.threshold FROM batches b LEFT JOIN medicines m ON b.medicine_id=m.id');
+  const today=new Date();
+
+  // Stat counts
+  const activeBat=batches.filter(b=>new Date(b.expiry)>today&&b.qty>0).length;
+  const exp30=batches.filter(b=>{const diff=Math.ceil((new Date(b.expiry)-today)/864e5);return diff>=0&&diff<=30;});
+  const expired=batches.filter(b=>new Date(b.expiry)<today);
+  const lowStock=batches.filter(b=>b.threshold&&b.qty<b.threshold&&b.qty>=0&&new Date(b.expiry)>=today);
+
+  animNum('s-medicines',meds.length);
+  animNum('s-batches',activeBat);
+  animNum('s-expiring',exp30.length);
+  animNum('s-lowstock',lowStock.length);
+
+  document.getElementById('s-medicines-sub').textContent=`↑ ${meds.filter(m=>m.status==='Active').length} active medicines`;
+  document.getElementById('s-batches-sub').textContent=`of ${batches.length} total batches`;
+  document.getElementById('s-expiring-sub').textContent=`${expired.length} already expired`;
+  document.getElementById('s-lowstock-sub').textContent='Needs reorder now';
+
+  const tot=batches.length||1;
+  document.getElementById('s-expiring-bar').style.width=Math.min(100,(exp30.length/tot)*100*3)+'%';
+  document.getElementById('s-lowstock-bar').style.width=Math.min(100,(lowStock.length/tot)*100*3)+'%';
+
+  // Donut
+  const C=327;
+  const okC=activeBat-lowStock.length; const wC=lowStock.length+exp30.length; const eC=expired.length;
+  const okA=(okC/tot)*C, wA=(wC/tot)*C, eA=(eC/tot)*C;
+  setTimeout(()=>{
+    setDash('d-ok',okA,C,0);
+    setDash('d-warn',wA,C,-okA);
+    setDash('d-exp',eA,C,-(okA+wA));
+    document.getElementById('d-total').textContent=batches.length;
+  },200);
+
+  document.getElementById('d-legend').innerHTML=`
+    <div style="display:flex;justify-content:space-between;margin-bottom:5px;"><span style="font-size:12px;color:var(--text2);">🟢 Adequate</span><span style="font-size:12px;font-weight:700;font-family:var(--mono);">${Math.max(0,okC)}</span></div>
+    <div class="progress-bar" style="margin-bottom:10px;"><div class="progress-fill" style="width:${(okC/tot*100).toFixed(0)}%;background:var(--success);"></div></div>
+    <div style="display:flex;justify-content:space-between;margin-bottom:5px;"><span style="font-size:12px;color:var(--text2);">🟡 Low/Near Expiry</span><span style="font-size:12px;font-weight:700;font-family:var(--mono);">${wC}</span></div>
+    <div class="progress-bar" style="margin-bottom:10px;"><div class="progress-fill" style="width:${(wC/tot*100).toFixed(0)}%;background:var(--warning);"></div></div>
+    <div style="display:flex;justify-content:space-between;margin-bottom:5px;"><span style="font-size:12px;color:var(--text2);">🔴 Expired</span><span style="font-size:12px;font-weight:700;font-family:var(--mono);">${eC}</span></div>
+    <div class="progress-bar"><div class="progress-fill" style="width:${(eC/tot*100).toFixed(0)}%;background:var(--danger);"></div></div>`;
+
+  // Top 8 medicines by stock (live SQL)
+  const stockMap={};
+  batches.filter(b=>new Date(b.expiry)>today).forEach(b=>stockMap[b.medicine]=(stockMap[b.medicine]||0)+b.qty);
+  const top=Object.entries(stockMap).sort((a,b)=>b[1]-a[1]).slice(0,8);
+  const mx=top[0]?top[0][1]:1;
+  const clrs=['linear-gradient(90deg,#6366f1,#0ea5e9)','linear-gradient(90deg,#10b981,#0ea5e9)','linear-gradient(90deg,#f59e0b,#ef4444)','linear-gradient(90deg,#6366f1,#a78bfa)','linear-gradient(90deg,#0ea5e9,#06b6d4)','linear-gradient(90deg,#ef4444,#f59e0b)','linear-gradient(90deg,#10b981,#6366f1)','linear-gradient(90deg,#a78bfa,#0ea5e9)'];
+  document.getElementById('top-medicines').innerHTML=top.map(([name,qty],i)=>`
+    <div class="chart-row" style="animation:rowFade 0.35s ease ${i*0.06}s both;">
+      <span class="chart-label">${name.replace(/ \d.*$/,'')}</span>
+      <div class="chart-bar-wrap">
+        <div class="progress-bar"><div class="progress-fill" style="width:${(qty/mx*100).toFixed(0)}%;background:${clrs[i]};"></div></div>
+      </div>
+      <span class="chart-val">${qty}</span>
+    </div>`).join('');
+
+  // Category pills
+  const catMap={};
+  meds.forEach(m=>catMap[m.category]=(catMap[m.category]||0)+1);
+  const catIcons={'Analgesics':'','Antibiotics':'🦠','Antidiabetics':'🩺','Antacids':'🫃','Cardiovascular':'❤️','Respiratory':'🫁','Vitamins':'🌿','Neurological':'🧠','Other':'📦'};
+  document.getElementById('cat-grid').innerHTML=Object.entries(catMap).map(([cat,n],i)=>`
+    <div class="cat-pill" style="animation:rowFade 0.35s ease ${i*0.05}s both;" onclick="filterMedCat('${cat}');showPage('medicines',document.querySelectorAll('.nav-item')[2])">
+      <div class="cat-pill-icon">${catIcons[cat]||'📦'}</div>
+      <div class="cat-pill-val">${n}</div>
+      <div class="cat-pill-lbl">${cat}</div>
+    </div>`).join('');
+
+  // Alerts preview
+  const alerts=computeAlerts();
+  document.getElementById('dash-alerts').innerHTML=alerts.slice(0,4).map((a,i)=>`
+    <div class="alert-item ${a.type}" style="animation-delay:${i*0.07}s;">
+      <span class="alert-icon">${a.icon}</span>
+      <div class="alert-info">
+        <div class="alert-title">${a.title}</div>
+        <div class="alert-desc">${a.desc}</div>
+      </div>
+    </div>`).join('')||'<div style="text-align:center;padding:24px;color:var(--text2);">✅ No alerts at this time</div>';
+}
+
+function setDash(id,arc,total,offset){
+  const el=document.getElementById(id);
+  if(!el) return;
+  el.setAttribute('stroke-dasharray',`${Math.max(0,arc)} ${total}`);
+  el.setAttribute('stroke-dashoffset',offset);
+}
+
+// ═══════════════════════════════════════════════
+// USERS
+// ═══════════════════════════════════════════════
+let _userFilter='all', _userSearch='';
+function renderUsers(){
+  let q='SELECT * FROM users';
+  const p=[];
+  if(_userFilter!=='all'){q+=' WHERE role=?';p.push(_userFilter);}
+  if(_userSearch){ q+=p.length?' AND ':' WHERE '; q+='(name LIKE ? OR email LIKE ?)'; p.push(`%${_userSearch}%`,`%${_userSearch}%`); }
+  const rows=sqlAll(q,p);
+  document.getElementById('users-tbody').innerHTML=rows.map((u,i)=>`
+    <tr style="animation-delay:${i*0.04}s;">
+      <td><div style="display:flex;align-items:center;gap:10px;">
+        <div style="width:32px;height:32px;border-radius:9px;background:linear-gradient(135deg,var(--primary),var(--secondary));display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;color:#fff;flex-shrink:0;">${u.avatar||u.name[0]}</div>
+        <strong>${u.name}</strong>
+      </div></td>
+      <td style="color:var(--text2);">${u.email}</td>
+      <td><span class="badge ${u.role==='Admin'?'badge-purple':u.role==='Pharmacist'?'badge-info':'badge-success'}">${u.role}</span></td>
+      <td><span class="badge ${u.status==='Active'?'badge-success':'badge-gray'}">${u.status}</span></td>
+      <td style="color:var(--text2);font-family:var(--mono);font-size:12px;">${u.phone||'—'}</td>
+      <td><div style="display:flex;gap:6px;">
+        <button class="btn btn-outline btn-sm btn-icon" onclick="openModal('editUser',${u.id})" title="Edit">✏️</button>
+        <button class="btn btn-danger btn-sm btn-icon" onclick="delUser(${u.id})" title="Delete">🗑️</button>
+      </div></td>
+    </tr>`).join('')||'<tr><td colspan="6" style="text-align:center;padding:32px;color:var(--text2);">No users found</td></tr>';
+}
+function filterUsers(r,el){
+  _userFilter=r;
+  el.parentNode.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');
+  renderUsers();
+}
+function searchUsers(v){_userSearch=v;renderUsers();}
+function saveUser(){
+  const name=document.getElementById('f-uname').value.trim();
+  const email=document.getElementById('f-uemail').value.trim();
+  const role=document.getElementById('f-urole').value;
+  const phone=document.getElementById('f-uphone').value.trim();
+  const status=document.getElementById('f-ustatus').value;
+  if(!name||!email){showToast('Name & email are required','⚠️');return;}
+  const eid=document.getElementById('f-uid')?.value;
+  if(eid){ sqlRun('UPDATE users SET name=?,email=?,role=?,phone=?,status=? WHERE id=?',[name,email,role,phone,status,parseInt(eid)]); showToast('User updated','✅'); }
+  else { sqlRun('INSERT INTO users(name,email,role,status,phone,avatar) VALUES(?,?,?,?,?,?)',[name,email,role,status,phone,name[0].toUpperCase()]); showToast('User added','✅'); }
+  closeModal(); renderUsers();
+}
+function delUser(id){ if(confirm('Delete this user?')){ sqlRun('DELETE FROM users WHERE id=?',[id]); showToast('User deleted','🗑️'); renderUsers(); } }
+
+// ═══════════════════════════════════════════════
+// MEDICINES
+// ═══════════════════════════════════════════════
+let _medSearch='', _medCat='';
+function renderMeds(){
+  let q='SELECT * FROM medicines';
+  const p=[];
+  if(_medCat){q+=' WHERE category=?';p.push(_medCat);}
+  if(_medSearch){q+=p.length?' AND ':' WHERE ';q+='name LIKE ?';p.push(`%${_medSearch}%`);}
+  q+=' ORDER BY name';
+  const rows=sqlAll(q,p);
+  document.getElementById('medicines-tbody').innerHTML=rows.map((m,i)=>`
+    <tr style="animation-delay:${i*0.03}s;" id="mrow-${m.id}">
+      <td><strong>${m.name}</strong></td>
+      <td><span class="badge badge-info">${m.category}</span></td>
+      <td style="color:var(--text2);">${m.unit}</td>
+      <td><span class="badge badge-gray">${m.storage}</span></td>
+      <td style="font-family:var(--mono);">${m.threshold} units</td>
+      <td style="font-family:var(--mono);font-weight:600;">₹${parseFloat(m.price).toFixed(2)}</td>
+      <td>
+        <span class="badge ${m.status==='Active'?'badge-success':'badge-gray'}" style="cursor:pointer;" onclick="toggleMedStatus(${m.id},'${m.status}')" title="Click to toggle status">
+          ${m.status==='Active'?'✅':'⛔'} ${m.status}
+        </span>
+      </td>
+      <td><div style="display:flex;gap:6px;">
+        <button class="btn btn-outline btn-sm btn-icon" onclick="openModal('editMed',${m.id})" title="Edit">✏️</button>
+        <button class="btn btn-danger btn-sm btn-icon" onclick="delMed(${m.id},'${m.name.replace(/'/g,"\\'")}')">🗑️</button>
+      </div></td>
+    </tr>`).join('')||'<tr><td colspan="8" style="text-align:center;padding:32px;color:var(--text2);">No medicines found</td></tr>';
+}
+function toggleMedStatus(id, current){
+  const next = current==='Active'?'Inactive':'Active';
+  sqlRun('UPDATE medicines SET status=? WHERE id=?',[next,id]);
+  showToast(`Status changed to ${next}`,'🔄');
+  renderMeds();
+}
+function searchMeds(v){_medSearch=v;renderMeds();}
+function filterMedCat(v){_medCat=v;renderMeds();}
+function saveMed(){
+  const name=document.getElementById('f-mname').value.trim();
+  const cat=document.getElementById('f-mcat').value;
+  const unit=document.getElementById('f-munit').value;
+  const stor=document.getElementById('f-mstor').value;
+  const thr=parseInt(document.getElementById('f-mthr').value)||50;
+  const price=parseFloat(document.getElementById('f-mprice').value)||0;
+  const status=document.getElementById('f-mstatus').value;
+  if(!name){showToast('Medicine name is required','⚠️');return;}
+  if(price<=0){showToast('Please enter a valid price','⚠️');return;}
+  const eid=document.getElementById('f-mid')?.value;
+  if(eid){
+    sqlRun('UPDATE medicines SET name=?,category=?,unit=?,storage=?,threshold=?,price=?,status=? WHERE id=?',[name,cat,unit,stor,thr,price,status,parseInt(eid)]);
+    showToast('Medicine updated successfully','✅');
+  } else {
+    sqlRun('INSERT INTO medicines(name,category,unit,storage,threshold,price,status) VALUES(?,?,?,?,?,?,?)',[name,cat,unit,stor,thr,price,status]);
+    showToast('Medicine added successfully','✅');
+  }
+  closeModal(); renderMeds(); renderDashboard();
+}
+function delMed(id, name){
+  const modal=document.getElementById('modal');
+  const mt=document.getElementById('modal-title');
+  const mb=document.getElementById('modal-body');
+  const mf=document.getElementById('modal-footer');
+  mt.textContent='🗑️ Delete Medicine';
+  mb.innerHTML=`<div style="text-align:center;padding:10px 0;">
+    <div style="font-size:40px;margin-bottom:12px;">⚠️</div>
+    <div style="font-size:16px;font-weight:700;margin-bottom:8px;">Delete "${name}"?</div>
+    <div style="font-size:13px;color:var(--text2);line-height:1.6;">This will permanently remove this medicine and all its associated data. This action <strong>cannot be undone</strong>.</div>
+  </div>`;
+  mf.innerHTML=`<button class="btn btn-outline" onclick="closeModal()">Cancel</button>
+    <button class="btn btn-danger" onclick="confirmDelMed(${id})">🗑️ Yes, Delete</button>`;
+  modal.classList.add('open');
+}
+function confirmDelMed(id){
+  sqlRun('DELETE FROM medicines WHERE id=?',[id]);
+  showToast('Medicine deleted','🗑️');
+  closeModal(); renderMeds(); renderDashboard();
+}
+
+// ═══════════════════════════════════════════════
+// BATCHES
+// ═══════════════════════════════════════════════
+let _batchFilter='all', _batchSearch='';
+function renderBatches(){
+  const batches=sqlAll('SELECT b.*,m.threshold FROM batches b LEFT JOIN medicines m ON b.medicine_id=m.id ORDER BY b.expiry');
+  let rows=batches.map(b=>({...b,_status:bStatus(b.expiry,b.qty,b.threshold)}));
+  if(_batchFilter!=='all') rows=rows.filter(b=>b._status===_batchFilter);
+  if(_batchSearch){ const s=_batchSearch.toLowerCase(); rows=rows.filter(b=>b.medicine.toLowerCase().includes(s)||b.batch.toLowerCase().includes(s)||b.supplier.toLowerCase().includes(s)); }
+  document.getElementById('batches-tbody').innerHTML=rows.map((b,i)=>`
+    <tr style="animation-delay:${i*0.03}s;">
+      <td><strong>${b.medicine}</strong></td>
+      <td style="font-family:var(--mono);color:var(--primary);font-size:12px;">${b.batch}</td>
+      <td style="font-family:var(--mono);">${b.expiry}</td>
+      <td><strong>${b.qty}</strong></td>
+      <td style="color:var(--text2);">${b.supplier}</td>
+      <td><span class="badge badge-gray">${b.storage}</span></td>
+      <td><span class="badge ${b._status==='Active'?'badge-success':b._status==='Near Expiry'?'badge-warning':b._status==='Expired'?'badge-danger':'badge-info'}">${b._status}</span></td>
+      <td><div style="display:flex;gap:6px;">
+        <button class="btn btn-outline btn-sm btn-icon" onclick="openModal('editBatch',${b.id})" title="Edit">✏️</button>
+        <button class="btn btn-danger btn-sm btn-icon" onclick="delBatch(${b.id})" title="Delete">🗑️</button>
+      </div></td>
+    </tr>`).join('')||'<tr><td colspan="8" style="text-align:center;padding:32px;color:var(--text2);">No batches found</td></tr>';
+}
+function filterBatches(f,el){
+  _batchFilter=f;
+  el.parentNode.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');
+  renderBatches();
+}
+function searchBatches(v){_batchSearch=v;renderBatches();}
+function saveBatch(){
+  const mid=parseInt(document.getElementById('f-bmed').value);
+  const med=sqlOne('SELECT name FROM medicines WHERE id=?',[mid]);
+  const bnum=document.getElementById('f-bnum').value.trim();
+  const qty=parseInt(document.getElementById('f-bqty').value)||0;
+  const expiry=document.getElementById('f-bexp').value;
+  const sup=document.getElementById('f-bsup').value;
+  const stor=document.getElementById('f-bstor2').value;
+  if(!bnum||!expiry){showToast('Batch number & expiry required','⚠️');return;}
+  const eid=document.getElementById('f-bid')?.value;
+  const mname=med?med.name:'Unknown';
+  if(eid){ sqlRun('UPDATE batches SET medicine_id=?,medicine=?,batch=?,expiry=?,qty=?,supplier=?,storage=? WHERE id=?',[mid,mname,bnum,expiry,qty,sup,stor,parseInt(eid)]); showToast('Batch updated','✅'); }
+  else { sqlRun('INSERT INTO batches(medicine_id,medicine,batch,expiry,qty,supplier,storage) VALUES(?,?,?,?,?,?,?)',[mid,mname,bnum,expiry,qty,sup,stor]); showToast('Batch added','✅'); }
+  closeModal(); renderBatches(); renderDashboard();
+}
+function delBatch(id){ if(confirm('Delete this batch?')){ sqlRun('DELETE FROM batches WHERE id=?',[id]); showToast('Batch deleted','🗑️'); renderBatches(); renderDashboard(); } }
+function issueMed(){
+  const mid=parseInt(document.getElementById('f-imed').value);
+  const qty=parseInt(document.getElementById('f-iqty').value)||0;
+  if(!mid||qty<1){showToast('Select medicine and quantity','⚠️');return;}
+  // FIFO: earliest expiry first
+  const batches=sqlAll('SELECT * FROM batches WHERE medicine_id=? AND qty>0 AND expiry>=date("now") ORDER BY expiry ASC',[mid]);
+  let remaining=qty;
+  for(const b of batches){
+    if(remaining<=0) break;
+    const take=Math.min(b.qty,remaining);
+    sqlRun('UPDATE batches SET qty=qty-? WHERE id=?',[take,b.id]);
+    remaining-=take;
+  }
+  if(remaining>0) showToast(`Only ${qty-remaining} units available (partial issue)!`,'⚠️');
+  else showToast(`${qty} units issued via FIFO ✓`,'📤');
+  closeModal(); renderBatches(); renderDashboard();
+}
+
+// ═══════════════════════════════════════════════
+// ALERTS
+// ═══════════════════════════════════════════════
+let _alertSearch='';
+function renderAlerts(){
+  const all=computeAlerts();
+  let alerts=all;
+  if(_alertSearch){ const s=_alertSearch.toLowerCase(); alerts=alerts.filter(a=>a.title.toLowerCase().includes(s)||a.desc.toLowerCase().includes(s)); }
+
+  // Update stat counters with correct casing
+  const expiredCount=all.filter(a=>a.title.includes('EXPIRED')).length;
+  const nearCount=all.filter(a=>a.title.includes('Expires')).length;
+  const expEl=document.getElementById('a-expired'); if(expEl) expEl.textContent=expiredCount;
+  const nearEl=document.getElementById('a-near'); if(nearEl) nearEl.textContent=nearCount;
+
+  document.getElementById('alerts-list').innerHTML=alerts.map((a,i)=>`
+    <div class="alert-item ${a.type}" style="animation-delay:${i*0.06}s;">
+      <span class="alert-icon">${a.icon}</span>
+      <div class="alert-info">
+        <div class="alert-title">${a.title}</div>
+        <div class="alert-desc">${a.desc}</div>
+      </div>
+      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;">
+        <button class="btn btn-outline btn-sm" style="font-size:11px;" onclick="this.closest('.alert-item').style.animation='alertOut 0.3s ease forwards';setTimeout(()=>this.closest('.alert-item').remove(),300);">Dismiss</button>
+      </div>
+    </div>`).join('')||'<div style="text-align:center;padding:40px;color:var(--text2);">✅ No active alerts!</div>';
+}
+function searchAlerts(v){_alertSearch=v;renderAlerts();}
+
+// ═══════════════════════════════════════════════
+// SUPPLIERS
+// ═══════════════════════════════════════════════
+let _supSearch='';
+function renderSuppliers(){
+  let q='SELECT * FROM suppliers';
+  const p=[];
+  if(_supSearch){ q+=' WHERE name LIKE ? OR city LIKE ? OR email LIKE ?'; p.push(`%${_supSearch}%`,`%${_supSearch}%`,`%${_supSearch}%`); }
+  q+=' ORDER BY name';
+  const sups=sqlAll(q,p);
+  const stars=n=>'⭐'.repeat(n)+'☆'.repeat(5-n);
+  document.getElementById('suppliers-grid').innerHTML=sups.map((s,i)=>`
+    <div class="supplier-card" style="animation:rowFade 0.4s ease ${i*0.08}s both;">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;">
+        <div class="supplier-avatar">${s.name[0]}</div>
+        <span class="badge ${s.status==='Active'?'badge-success':'badge-gray'}" style="cursor:pointer;" onclick="toggleSupStatus(${s.id},'${s.status}')" title="Click to toggle">${s.status}</span>
+      </div>
+      <div class="supplier-name">${s.name}</div>
+      <div class="supplier-contact">📞 ${s.contact}</div>
+      <div class="supplier-contact" style="margin-bottom:10px;">📧 ${s.email}</div>
+      <div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap;">
+        <span class="badge badge-gray">📍 ${s.city}</span>
+        <span class="badge badge-info">📦 ${s.orders} orders</span>
+      </div>
+      <div style="font-size:13px;margin-bottom:12px;">${stars(s.rating)} <span style="font-size:11px;color:var(--text2);">(${s.rating}/5)</span></div>
+      <div style="display:flex;gap:6px;">
+        <button class="btn btn-primary btn-sm" onclick="openModal('addPO')" style="flex:1;">+ Order</button>
+        <button class="btn btn-outline btn-sm btn-icon" onclick="openModal('editSupplier',${s.id})" title="Edit">✏️</button>
+        <button class="btn btn-danger btn-sm btn-icon" onclick="delSupplier(${s.id},'${s.name.replace(/'/g,"\\'")}')">🗑️</button>
+      </div>
+    </div>`).join('')||'<div style="text-align:center;padding:40px;color:var(--text2);grid-column:1/-1;">No suppliers found</div>';
+}
+function searchSuppliers(v){_supSearch=v;renderSuppliers();}
+function toggleSupStatus(id,current){
+  const next=current==='Active'?'Inactive':'Active';
+  sqlRun('UPDATE suppliers SET status=? WHERE id=?',[next,id]);
+  showToast(`Supplier ${next}`,'🔄'); renderSuppliers();
+}
+function saveSupplier(){
+  const name=document.getElementById('f-sname').value.trim();
+  const contact=document.getElementById('f-scontact').value.trim();
+  const email=document.getElementById('f-semail').value.trim();
+  const city=document.getElementById('f-scity').value.trim();
+  const rating=parseInt(document.getElementById('f-srating').value)||3;
+  const status=document.getElementById('f-sstatus').value;
+  if(!name){showToast('Supplier name is required','⚠️');return;}
+  const eid=document.getElementById('f-sid')?.value;
+  if(eid){
+    sqlRun('UPDATE suppliers SET name=?,contact=?,email=?,city=?,rating=?,status=? WHERE id=?',[name,contact,email,city,rating,status,parseInt(eid)]);
+    showToast('Supplier updated','✅');
+  } else {
+    sqlRun('INSERT INTO suppliers(name,contact,email,city,orders,rating,status) VALUES(?,?,?,?,?,?,?)',[name,contact,email,city,0,rating,status]);
+    showToast('Supplier added','✅');
+  }
+  closeModal(); renderSuppliers();
+}
+function delSupplier(id,name){
+  const mt=document.getElementById('modal-title');
+  const mb=document.getElementById('modal-body');
+  const mf=document.getElementById('modal-footer');
+  mt.textContent='🗑️ Delete Supplier';
+  mb.innerHTML=`<div style="text-align:center;padding:10px 0;">
+    <div style="font-size:40px;margin-bottom:12px;">⚠️</div>
+    <div style="font-size:16px;font-weight:700;margin-bottom:8px;">Delete "${name}"?</div>
+    <div style="font-size:13px;color:var(--text2);">This will permanently remove this supplier. Cannot be undone.</div>
+  </div>`;
+  mf.innerHTML=`<button class="btn btn-outline" onclick="closeModal()">Cancel</button><button class="btn btn-danger" onclick="sqlRun('DELETE FROM suppliers WHERE id=?',[${id}]);showToast('Supplier deleted','🗑️');closeModal();renderSuppliers();">🗑️ Delete</button>`;
+  document.getElementById('modal').classList.add('open');
+}
+
+// ═══════════════════════════════════════════════
+// PURCHASE ORDERS
+// ═══════════════════════════════════════════════
+let _poFilter='all', _poSearch='';
+function renderPOs(){
+  let q='SELECT * FROM purchase_orders';
+  const p=[];
+  const conds=[];
+  if(_poFilter!=='all'){conds.push('status=?');p.push(_poFilter);}
+  if(_poSearch){conds.push('(po_number LIKE ? OR supplier LIKE ?)');p.push(`%${_poSearch}%`,`%${_poSearch}%`);}
+  if(conds.length) q+=' WHERE '+conds.join(' AND ');
+  q+=' ORDER BY date DESC';
+  const rows=sqlAll(q,p);
+  document.getElementById('po-tbody').innerHTML=rows.map((po,i)=>`
+    <tr style="animation-delay:${i*0.04}s;">
+      <td style="font-family:var(--mono);font-weight:600;color:var(--primary);">${po.po_number}</td>
+      <td>${po.supplier}</td>
+      <td>${po.items} items</td>
+      <td><strong style="font-family:var(--mono);">₹${po.total.toLocaleString()}</strong></td>
+      <td><span class="badge ${po.status==='Delivered'?'badge-success':po.status==='Confirmed'?'badge-info':'badge-warning'}">${po.status}</span></td>
+      <td style="color:var(--text2);font-family:var(--mono);font-size:12px;">${po.date}</td>
+      <td><div style="display:flex;gap:6px;">
+        <button class="btn btn-outline btn-sm" onclick="openModal('viewPO',${po.id})">View</button>
+        ${po.status==='Pending'?`<button class="btn btn-success btn-sm" onclick="confirmPO(${po.id},'${po.po_number}')">Confirm</button>`:''}
+      </div></td>
+    </tr>`).join('')||'<tr><td colspan="7" style="text-align:center;padding:32px;color:var(--text2);">No orders found</td></tr>';
+}
+function filterPOs(f,el){
+  _poFilter=f;
+  el.parentNode.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');
+  renderPOs();
+}
+function searchPOs(v){_poSearch=v;renderPOs();}
+function confirmPO(id,num){
+  sqlRun('UPDATE purchase_orders SET status=? WHERE id=?',['Confirmed',id]);
+  showToast(`${num} confirmed!`,'✅');
+  renderPOs();
+}
+
+// ═══════════════════════════════════════════════
+// REPORTS — WEEKLY CHART
+// ═══════════════════════════════════════════════
+function renderWeeklyChart(){
+  const vals=[65,88,72,95,80,58,70];
+  const days=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+  const clrs=['#6366f1','#6366f1','#6366f1','#10b981','#6366f1','#f59e0b','#ef4444'];
+  const mx=Math.max(...vals);
+  document.getElementById('wk-chart').innerHTML=days.map((day,i)=>`
+    <div class="wk-col">
+      <div class="wk-bar" data-v="${vals[i]}" style="height:${(vals[i]/mx*88)}px;background:linear-gradient(180deg,${clrs[i]},${clrs[i]}88);animation-delay:${i*0.1}s;"></div>
+      <span class="wk-lbl">${day}</span>
+    </div>`).join('');
+}
+
+// ═══════════════════════════════════════════════
+// PAGE NAVIGATION
+// ═══════════════════════════════════════════════
+const pageTitles={dashboard:'Dashboard',users:'User Management',medicines:'Medicine Management',batches:'Batch & Stock Management',alerts:'Alerts',suppliers:'Supplier Management',purchase:'Purchase Orders',reports:'Reports'};
+
+function showPage(id,el){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  document.getElementById('page-'+id).classList.add('active');
+  if(el) el.classList.add('active');
+  document.getElementById('page-title').textContent=pageTitles[id]||'';
+  if(id==='dashboard') renderDashboard();
+  else if(id==='users') renderUsers();
+  else if(id==='medicines') renderMeds();
+  else if(id==='batches') renderBatches();
+  else if(id==='alerts') renderAlerts();
+  else if(id==='suppliers') renderSuppliers();
+  else if(id==='purchase') renderPOs();
+  else if(id==='reports') setTimeout(renderWeeklyChart,200);
+}
+
+// ═══════════════════════════════════════════════
+// MODALS
+// ═══════════════════════════════════════════════
+function openModal(type,extra){
+  const mt=document.getElementById('modal-title');
+  const mb=document.getElementById('modal-body');
+  const mf=document.getElementById('modal-footer');
+
+  if(type==='addUser'||type==='editUser'){
+    const u=type==='editUser'?sqlOne('SELECT * FROM users WHERE id=?',[extra]):null;
+    mt.textContent=(u?'✏️ Edit':'👤 Add New')+' User';
+    mb.innerHTML=`<div class="form-grid">
+      ${u?`<input type="hidden" id="f-uid" value="${u.id}">`:''}
+      <div class="form-group"><label>Full Name</label><input type="text" id="f-uname" value="${u?.name||''}" placeholder="Enter full name"></div>
+      <div class="form-group"><label>Email</label><input type="email" id="f-uemail" value="${u?.email||''}" placeholder="email@example.com"></div>
+      <div class="form-group"><label>Role</label><select id="f-urole">${['Admin','Pharmacist','Supplier'].map(r=>`<option ${u?.role===r?'selected':''}>${r}</option>`).join('')}</select></div>
+      <div class="form-group"><label>Phone</label><input type="tel" id="f-uphone" value="${u?.phone||''}" placeholder="+91 XXXXXXXXXX"></div>
+      <div class="form-group"><label>Status</label><select id="f-ustatus"><option ${u?.status==='Active'?'selected':''}>Active</option><option ${u?.status==='Inactive'?'selected':''}>Inactive</option></select></div>
+    </div>`;
+    mf.innerHTML=`<button class="btn btn-outline" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="saveUser()">💾 Save User</button>`;
+  }
+  else if(type==='addMedicine'||type==='editMed'){
+    const m=type==='editMed'?sqlOne('SELECT * FROM medicines WHERE id=?',[extra]):null;
+    mt.textContent=(m?'✏️ Edit':'Add New')+' Medicine';
+    const cats=['Analgesics','Antibiotics','Antidiabetics','Antacids','Cardiovascular','Respiratory','Vitamins','Neurological','Other'];
+    mb.innerHTML=`<div class="form-grid">
+      ${m?`<input type="hidden" id="f-mid" value="${m.id}">`:''}
+      <div class="form-group full"><label>Medicine Name</label><input type="text" id="f-mname" value="${m?.name||''}" placeholder="e.g. Paracetamol 500mg"></div>
+      <div class="form-group"><label>Category</label><select id="f-mcat">${cats.map(c=>`<option ${m?.category===c?'selected':''}>${c}</option>`).join('')}</select></div>
+      <div class="form-group"><label>Unit</label><select id="f-munit">${['Tablet','Capsule','Syrup','Injection','Vial','Inhaler','Cream','Drops'].map(u=>`<option ${m?.unit===u?'selected':''}>${u}</option>`).join('')}</select></div>
+      <div class="form-group"><label>Storage Condition</label><select id="f-mstor">${['Room Temp','Refrigerated','Frozen'].map(s=>`<option ${m?.storage===s?'selected':''}>${s}</option>`).join('')}</select></div>
+      <div class="form-group"><label>Min Stock Threshold (units)</label><input type="number" id="f-mthr" value="${m?.threshold||50}" min="1"></div>
+      <div class="form-group"><label>Price per Unit (₹)</label><input type="number" id="f-mprice" value="${m?.price||''}" step="0.01" min="0" placeholder="e.g. 5.50"></div>
+      <div class="form-group"><label>Status</label>
+        <select id="f-mstatus">
+          <option value="Active" ${(!m||m.status==='Active')?'selected':''}>Active</option>
+          <option value="Inactive" ${m?.status==='Inactive'?'selected':''}>Inactive</option>
+        </select>
+      </div>
+      <div class="form-group" style="display:flex;align-items:flex-end;">
+        <div style="background:rgba(99,102,241,0.07);border:1px solid rgba(99,102,241,0.18);border-radius:10px;padding:10px 12px;font-size:12px;color:var(--text2);width:100%;">
+          💡 Price should be per single unit (tablet/capsule/vial)
+        </div>
+      </div>
+    </div>`;
+    mf.innerHTML=`<button class="btn btn-outline" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="saveMed()">💾 Save Medicine</button>`;
+  }
+  else if(type==='addBatch'||type==='editBatch'){
+    const b=type==='editBatch'?sqlOne('SELECT * FROM batches WHERE id=?',[extra]):null;
+    const meds=sqlAll('SELECT id,name FROM medicines ORDER BY name');
+    const sups=sqlAll('SELECT name FROM suppliers');
+    mt.textContent=(b?'✏️ Edit':'📦 Add New')+' Batch';
+    mb.innerHTML=`<div class="form-grid">
+      ${b?`<input type="hidden" id="f-bid" value="${b.id}">`:''}
+      <div class="form-group full"><label>Medicine</label><select id="f-bmed">${meds.map(m=>`<option value="${m.id}" ${b?.medicine_id===m.id?'selected':''}>${m.name}</option>`).join('')}</select></div>
+      <div class="form-group"><label>Batch Number</label><input type="text" id="f-bnum" value="${b?.batch||''}" placeholder="e.g. PC-2025-A01"></div>
+      <div class="form-group"><label>Quantity (units)</label><input type="number" id="f-bqty" value="${b?.qty||0}" min="0"></div>
+      <div class="form-group"><label>Expiry Date</label><input type="date" id="f-bexp" value="${b?.expiry||''}"></div>
+      <div class="form-group"><label>Supplier</label><select id="f-bsup">${sups.map(s=>`<option ${b?.supplier===s.name?'selected':''}>${s.name}</option>`).join('')}</select></div>
+      <div class="form-group"><label>Storage</label><select id="f-bstor2">${['Room Temp','Refrigerated','Frozen'].map(s=>`<option ${b?.storage===s?'selected':''}>${s}</option>`).join('')}</select></div>
+    </div>`;
+    mf.innerHTML=`<button class="btn btn-outline" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="saveBatch()">💾 Add Batch</button>`;
+  }
+  else if(type==='issueMed'){
+    const meds=sqlAll('SELECT id,name FROM medicines ORDER BY name');
+    mt.textContent='📤 Issue Medicine';
+    mb.innerHTML=`<div style="background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.2);border-radius:10px;padding:12px;margin-bottom:16px;font-size:13px;color:var(--success);">
+      ✅ System will auto-select earliest-expiry batch (FIFO)
+    </div>
+    <div class="form-grid">
+      <div class="form-group full"><label>Medicine</label><select id="f-imed">${meds.map(m=>`<option value="${m.id}">${m.name}</option>`).join('')}</select></div>
+      <div class="form-group"><label>Quantity to Issue</label><input type="number" id="f-iqty" value="1" min="1"></div>
+      <div class="form-group"><label>Issued To / Patient</label><input type="text" placeholder="Patient name or ID"></div>
+      <div class="form-group full"><label>Notes</label><textarea rows="2" placeholder="Optional notes…"></textarea></div>
+    </div>`;
+    mf.innerHTML=`<button class="btn btn-outline" onclick="closeModal()">Cancel</button><button class="btn btn-success" onclick="issueMed()">📤 Issue Medicine</button>`;
+  }
+  else if(type==='addSupplier'||type==='editSupplier'){
+    const s=type==='editSupplier'?sqlOne('SELECT * FROM suppliers WHERE id=?',[extra]):null;
+    mt.textContent=(s?'✏️ Edit':'🚚 Add New')+' Supplier';
+    mb.innerHTML=`<div class="form-grid">
+      ${s?`<input type="hidden" id="f-sid" value="${s.id}">`:''}
+      <div class="form-group full"><label>Company Name</label><input type="text" id="f-sname" value="${s?.name||''}" placeholder="e.g. Suresh Pharma Ltd."></div>
+      <div class="form-group"><label>Contact Number</label><input type="tel" id="f-scontact" value="${s?.contact||''}" placeholder="9876543210"></div>
+      <div class="form-group"><label>Email</label><input type="email" id="f-semail" value="${s?.email||''}" placeholder="supplier@company.com"></div>
+      <div class="form-group"><label>City</label><input type="text" id="f-scity" value="${s?.city||''}" placeholder="Mumbai"></div>
+      <div class="form-group"><label>Rating (1–5)</label>
+        <select id="f-srating">
+          ${[1,2,3,4,5].map(r=>`<option value="${r}" ${(s?.rating||3)==r?'selected':''}>${'⭐'.repeat(r)} (${r}/5)</option>`).join('')}
+        </select>
+      </div>
+      <div class="form-group"><label>Status</label>
+        <select id="f-sstatus">
+          <option value="Active" ${(!s||s.status==='Active')?'selected':''}>Active</option>
+          <option value="Inactive" ${s?.status==='Inactive'?'selected':''}>Inactive</option>
+        </select>
+      </div>
+    </div>`;
+    mf.innerHTML=`<button class="btn btn-outline" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="saveSupplier()">💾 Save Supplier</button>`;
+  }
+  else if(type==='addPO'){
+    const sups=sqlAll('SELECT name FROM suppliers');
+    const meds=sqlAll('SELECT name FROM medicines ORDER BY name');
+    mt.textContent='🧾 Create Purchase Order';
+    mb.innerHTML=`<div class="form-group" style="margin-bottom:14px;"><label>Supplier</label><select>${sups.map(s=>`<option>${s.name}</option>`).join('')}</select></div>
+    <label style="font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:0.6px;">Order Items</label>
+    <div id="po-items" style="margin-top:10px;">
+      <div style="display:grid;grid-template-columns:2fr 1fr 1fr;gap:8px;margin-bottom:8px;">
+        <select style="min-width:0;">${meds.map(m=>`<option>${m.name}</option>`).join('')}</select>
+        <input type="number" placeholder="Qty" style="min-width:0;">
+        <input type="text" placeholder="₹ Price" style="min-width:0;">
+      </div>
+    </div>
+    <button class="btn btn-outline btn-sm" style="margin-top:8px;" onclick="addPOItem()">+ Add Item</button>
+    <div class="form-grid" style="margin-top:14px;">
+      <div class="form-group"><label>Expected Delivery</label><input type="date"></div>
+      <div class="form-group"><label>Priority</label><select><option>Normal</option><option>Urgent</option></select></div>
+    </div>`;
+    mf.innerHTML=`<button class="btn btn-outline" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="showToast('Purchase Order created!','🧾');closeModal()">📤 Create PO</button>`;
+  }
+  else if(type==='viewPO'){
+    const po=sqlOne('SELECT * FROM purchase_orders WHERE id=?',[extra]);
+    mt.textContent=`🧾 ${po.po_number}`;
+    mb.innerHTML=`<div class="po-status-bar">
+      <div class="po-step done"><div class="po-dot">✓</div><div class="po-step-label">Created</div></div>
+      <div class="po-step ${po.status!=='Pending'?'done':'active'}"><div class="po-dot">${po.status!=='Pending'?'✓':'⏳'}</div><div class="po-step-label">Confirmed</div></div>
+      <div class="po-step ${po.status==='Delivered'?'done':''}"><div class="po-dot">${po.status==='Delivered'?'✓':'🚚'}</div><div class="po-step-label">Shipped</div></div>
+      <div class="po-step ${po.status==='Delivered'?'done':''}"><div class="po-dot">${po.status==='Delivered'?'✓':'📦'}</div><div class="po-step-label">Delivered</div></div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:16px;">
+      <div style="background:var(--bg3);padding:12px;border-radius:10px;"><div style="font-size:11px;color:var(--text2);margin-bottom:4px;">SUPPLIER</div><div style="font-weight:600;">${po.supplier}</div></div>
+      <div style="background:var(--bg3);padding:12px;border-radius:10px;"><div style="font-size:11px;color:var(--text2);margin-bottom:4px;">DATE</div><div style="font-weight:600;font-family:var(--mono);">${po.date}</div></div>
+      <div style="background:var(--bg3);padding:12px;border-radius:10px;"><div style="font-size:11px;color:var(--text2);margin-bottom:4px;">TOTAL</div><div style="font-weight:700;color:var(--success);font-family:var(--mono);">₹${po.total.toLocaleString()}</div></div>
+      <div style="background:var(--bg3);padding:12px;border-radius:10px;"><div style="font-size:11px;color:var(--text2);margin-bottom:4px;">STATUS</div><span class="badge ${po.status==='Delivered'?'badge-success':po.status==='Confirmed'?'badge-info':'badge-warning'}">${po.status}</span></div>
+    </div>`;
+    mf.innerHTML=`<button class="btn btn-outline" onclick="closeModal()">Close</button>${po.status==='Pending'?`<button class="btn btn-success" onclick="confirmPO(${po.id},'${po.po_number}');closeModal()">✅ Confirm Order</button>`:''}`;
+  }
+  else if(type==='report'){
+    const titles={expiry:'📅 Expiry Report',stock:'📦 Stock Summary',purchase:'🧾 Purchase Report',usage:'📊 Usage Report',audit:'🔍 Audit Report',supplier:'🚚 Supplier Report'};
+    const counts={
+      expiry: sqlAll('SELECT COUNT(*) as c FROM batches WHERE expiry<=date("now","+30 days")')[0]?.c||0,
+      stock:  sqlAll('SELECT COUNT(*) as c FROM medicines')[0]?.c||0,
+      purchase: sqlAll('SELECT COUNT(*) as c FROM purchase_orders')[0]?.c||0,
+      usage:  7,
+      audit:  sqlAll('SELECT COUNT(*) as c FROM batches')[0]?.c||0,
+      supplier: sqlAll('SELECT COUNT(*) as c FROM suppliers')[0]?.c||0,
+    };
+    mt.textContent = titles[extra] || 'Report';
+    mb.innerHTML=`
+    <div style="background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.25);border-radius:11px;padding:13px 16px;margin-bottom:18px;display:flex;align-items:center;gap:10px;">
+      <span style="font-size:22px;">📋</span>
+      <div>
+        <div style="font-size:13px;font-weight:600;color:var(--success);">Live SQL Data</div>
+        <div style="font-size:12px;color:var(--text2);">${counts[extra]||0} records will be exported from the database</div>
+      </div>
+    </div>
+    <div class="form-grid">
+      <div class="form-group"><label>Date From</label><input type="date" id="rpt-from"></div>
+      <div class="form-group"><label>Date To</label><input type="date" id="rpt-to"></div>
+      <div class="form-group"><label>Download Format</label>
+        <select id="rpt-format">
+          <option value="PDF">📄 PDF (Print)</option>
+          <option value="Excel">📊 Excel (.xlsx)</option>
+          <option value="CSV">📋 CSV (.csv)</option>
+        </select>
+      </div>
+      <div class="form-group"><label>Group By</label>
+        <select id="rpt-group">
+          <option>Medicine</option><option>Category</option><option>Supplier</option>
+        </select>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:16px;">
+      <div style="background:var(--bg3);border-radius:10px;padding:12px;text-align:center;cursor:pointer;border:1px solid var(--border);transition:all 0.2s;" onmouseenter="this.style.borderColor='rgba(99,102,241,0.4)'" onmouseleave="this.style.borderColor='var(--border)'" onclick="document.getElementById('rpt-format').value='PDF';generateReport('${extra}')">
+        <div style="font-size:22px;">📄</div><div style="font-size:12px;font-weight:600;margin-top:4px;">PDF</div><div style="font-size:11px;color:var(--text2);">Print-ready</div>
+      </div>
+      <div style="background:var(--bg3);border-radius:10px;padding:12px;text-align:center;cursor:pointer;border:1px solid var(--border);transition:all 0.2s;" onmouseenter="this.style.borderColor='rgba(16,185,129,0.4)'" onmouseleave="this.style.borderColor='var(--border)'" onclick="document.getElementById('rpt-format').value='Excel';generateReport('${extra}')">
+        <div style="font-size:22px;">📊</div><div style="font-size:12px;font-weight:600;margin-top:4px;">Excel</div><div style="font-size:11px;color:var(--text2);">.xlsx file</div>
+      </div>
+      <div style="background:var(--bg3);border-radius:10px;padding:12px;text-align:center;cursor:pointer;border:1px solid var(--border);transition:all 0.2s;" onmouseenter="this.style.borderColor='rgba(245,158,11,0.4)'" onmouseleave="this.style.borderColor='var(--border)'" onclick="document.getElementById('rpt-format').value='CSV';generateReport('${extra}')">
+        <div style="font-size:22px;">📋</div><div style="font-size:12px;font-weight:600;margin-top:4px;">CSV</div><div style="font-size:11px;color:var(--text2);">.csv file</div>
+      </div>
+    </div>`;
+    mf.innerHTML=`<button class="btn btn-outline" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="generateReport('${extra}')">📥 Download Report</button>`;
+  }
+
+  document.getElementById('modal').classList.add('open');
+}
+
+function closeModal(){
+  document.getElementById('modal').classList.remove('open');
+}
+
+function addPOItem(){
+  const c=document.getElementById('po-items');
+  if(!c) return;
+  const meds=sqlAll('SELECT name FROM medicines ORDER BY name');
+  const row=document.createElement('div');
+  row.style.cssText='display:grid;grid-template-columns:2fr 1fr 1fr;gap:8px;margin-bottom:8px;animation:rowFade 0.25s ease;';
+  row.innerHTML=`<select style="min-width:0;">${meds.map(m=>`<option>${m.name}</option>`).join('')}</select><input type="number" placeholder="Qty" style="min-width:0;"><input type="text" placeholder="₹ Price" style="min-width:0;">`;
+  c.appendChild(row);
+}
+
+// Modal close on outside click
+document.getElementById('modal').addEventListener('click',function(e){if(e.target===this)closeModal();});
+
+// ═══════════════════════════════════════════════
+// TOAST
+// ═══════════════════════════════════════════════
+let _toastT;
+function showToast(msg,icon='✅'){
+  const t=document.getElementById('toast');
+  document.getElementById('toast-icon').textContent=icon;
+  document.getElementById('toast-msg').textContent=msg;
+  t.classList.add('show');
+  clearTimeout(_toastT);
+  _toastT=setTimeout(()=>t.classList.remove('show'),3200);
+}
+
+// ═══════════════════════════════════════════════
+// AUTH — localStorage-based user accounts
+// ═══════════════════════════════════════════════
+
+// Users stored as: { [email]: { name, role, pass } }
+function getAccounts() {
+  try { return JSON.parse(localStorage.getItem('mt_accounts') || '{}'); } catch(e) { return {}; }
+}
+function saveAccounts(obj) {
+  localStorage.setItem('mt_accounts', JSON.stringify(obj));
+}
+
+// Pre-seed demo accounts if none exist yet
+(function seedDemoAccounts() {
+  const acc = getAccounts();
+  if (Object.keys(acc).length === 0) {
+    const demos = {
+      'priya@meditrack.com':  { name:'Dr. Priya Sharma',  role:'Admin',       pass:'admin123' },
+      'rajesh@meditrack.com': { name:'Rajesh Kumar',      role:'Pharmacist',  pass:'pharma123' },
+      'meena@meditrack.com':  { name:'Meena Patel',       role:'Pharmacist',  pass:'pharma123' },
+      'suresh@pharma.com':    { name:'Suresh Pharma Ltd.',role:'Supplier',    pass:'supplier123' },
+    };
+    saveAccounts(demos);
+  }
+})();
+
+let currentUser = null;
+
+// ── Panel switcher ──
+function switchPanel(name) {
+  ['login','signup','forgot'].forEach(p => {
+    const el = document.getElementById('panel-'+p);
+    if (el) el.style.display = p === name ? 'block' : 'none';
+  });
+  // Clear all messages
+  ['login-err','login-ok','signup-err','signup-ok','fp-err','fp-ok'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) { el.className = el.className.replace(' show',''); el.textContent = ''; }
+  });
+}
+
+// ── Show/hide pass ──
+function togglePass(inputId, eyeId) {
+  const inp = document.getElementById(inputId);
+  const eye = document.getElementById(eyeId);
+  if (!inp || !eye) return;
+  if (inp.type === 'password') { inp.type = 'text';     eye.textContent = '🙈'; }
+  else                         { inp.type = 'password'; eye.textContent = '👁️'; }
+}
+
+// ── Helper: show message ──
+function authMsg(id, text, isErr) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.textContent = (isErr ? '⚠️ ' : '✅ ') + text;
+  el.className = (isErr ? 'login-err' : 'login-ok') + ' show';
+}
+
+// ── Helper: shake card ──
+function shakeCard(panelId) {
+  const card = document.getElementById(panelId);
+  if (!card) return;
+  card.classList.add('login-shake');
+  setTimeout(() => card.classList.remove('login-shake'), 500);
+}
+
+// ── SIGN UP ──
+function doSignup() {
+  const name  = document.getElementById('su-name').value.trim();
+  const email = document.getElementById('su-email').value.trim().toLowerCase();
+  const role  = document.getElementById('su-role').value;
+  const pass  = document.getElementById('su-pass').value;
+  const pass2 = document.getElementById('su-pass2').value;
+
+  // Validations
+  if (!name) { authMsg('signup-err','Full name is required.',true); shakeCard('panel-signup'); return; }
+  if (!email || !email.includes('@') || !email.includes('.')) {
+    authMsg('signup-err','Please enter a valid email address.',true); shakeCard('panel-signup'); return;
+  }
+  if (pass.length < 6) { authMsg('signup-err','Password must be at least 6 characters.',true); shakeCard('panel-signup'); return; }
+  if (pass !== pass2)  { authMsg('signup-err','Passwords do not match.',true); shakeCard('panel-signup'); return; }
+
+  const accounts = getAccounts();
+  if (accounts[email]) { authMsg('signup-err','This email is already registered. Please sign in.',true); shakeCard('panel-signup'); return; }
+
+  // Save
+  accounts[email] = { name, role, pass };
+  saveAccounts(accounts);
+
+  authMsg('signup-ok', 'Account created! Redirecting to sign in…', false);
+  setTimeout(() => {
+    document.getElementById('login-email').value = email;
+    document.getElementById('login-pass').value  = pass;
+    switchPanel('login');
+  }, 600);
+}
+
+// ── SIGN IN ──
+function doLogin() {
+  const email = document.getElementById('login-email').value.trim().toLowerCase();
+  const pass  = document.getElementById('login-pass').value;
+  const btn   = document.getElementById('login-btn');
+
+  document.getElementById('login-email').classList.remove('error');
+  document.getElementById('login-pass').classList.remove('error');
+  document.getElementById('login-err').className = 'login-err';
+  document.getElementById('login-err').textContent = '';
+
+  // Look up account
+  const accounts = getAccounts();
+  const acc = accounts[email];
+
+  if (!acc) {
+    authMsg('login-err','No account found for this email. Please sign up first.',true);
+    document.getElementById('login-email').classList.add('error');
+    shakeCard('panel-login'); return;
+  }
+  if (acc.pass !== pass) {
+    authMsg('login-err','Incorrect password. Try again or reset it below.',true);
+    document.getElementById('login-pass').classList.add('error');
+    shakeCard('panel-login'); return;
+  }
+
+  // Success
+  currentUser = { email, name: acc.name, role: acc.role };
+  btn.disabled = true;
+
+  if (document.getElementById('remember-me').checked) {
+    localStorage.setItem('mt-session', JSON.stringify(currentUser));
+  } else {
+    localStorage.removeItem('mt-session');
+  }
+
+  document.getElementById('login-screen').classList.add('hide');
+  document.querySelector('.user-name').textContent  = currentUser.name;
+  document.querySelector('.user-role').textContent  = currentUser.role;
+  document.querySelector('.user-avatar').textContent = currentUser.name[0].toUpperCase();
+  startApp();
+}
+
+// ── FORGOT / RESET PASSWORD ──
+function doResetPassword() {
+  const email  = document.getElementById('fp-email').value.trim().toLowerCase();
+  const pass   = document.getElementById('fp-pass').value;
+  const pass2  = document.getElementById('fp-pass2').value;
+
+  document.getElementById('fp-err').className = 'login-err';
+  document.getElementById('fp-err').textContent = '';
+
+  if (!email || !email.includes('@')) {
+    authMsg('fp-err','Please enter your registered email address.',true); shakeCard('panel-forgot'); return;
+  }
+  if (pass.length < 6) {
+    authMsg('fp-err','New password must be at least 6 characters.',true); shakeCard('panel-forgot'); return;
+  }
+  if (pass !== pass2) {
+    authMsg('fp-err','Passwords do not match.',true); shakeCard('panel-forgot'); return;
+  }
+
+  const accounts = getAccounts();
+  if (!accounts[email]) {
+    authMsg('fp-err','No account found with this email. Please sign up first.',true); shakeCard('panel-forgot'); return;
+  }
+
+  // Update password directly — no email link needed
+  accounts[email].pass = pass;
+  saveAccounts(accounts);
+
+  authMsg('fp-ok','Password updated successfully! You can now sign in.', false);
+  setTimeout(() => {
+    document.getElementById('login-email').value = email;
+    document.getElementById('login-pass').value  = pass;
+    switchPanel('login');
+  }, 700);
+}
+
+// ── LOGOUT ──
+function logout() {
+  localStorage.removeItem('mt-session');
+  currentUser = null;
+  // Reset all fields
+  ['login-email','login-pass','su-name','su-email','su-pass','su-pass2','fp-email','fp-pass','fp-pass2'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) { el.value = ''; if (el.type === 'text') el.type = 'password'; }
+  });
+  ['login-eye','su-eye','su-eye2','fp-eye','fp-eye2'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = '👁️';
+  });
+  ['login-err','login-ok','signup-err','signup-ok','fp-err','fp-ok'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) { el.className = el.className.replace(' show',''); el.textContent = ''; }
+  });
+  document.getElementById('login-btn').disabled = false;
+  document.getElementById('login-btn-text').textContent = 'Sign In';
+  document.getElementById('login-success').classList.remove('show');
+
+  const ls = document.getElementById('login-screen');
+  ls.style.display = 'flex'; ls.style.opacity = '1'; ls.style.pointerEvents = 'auto';
+  ls.classList.remove('hide');
+  switchPanel('login');
+  hideLoader();
+}
+
+// ═══════════════════════════════════════════════
+// REPORT DOWNLOADS
+// ═══════════════════════════════════════════════
+function generateReport(type) {
+  const fmt   = document.getElementById('rpt-format').value;
+  const from  = document.getElementById('rpt-from').value;
+  const to    = document.getElementById('rpt-to').value;
+  const group = document.getElementById('rpt-group').value;
+
+  let rows = [], title = '';
+
+  if (type === 'expiry') {
+    title = 'Expiry Report';
+    const today = new Date();
+    const raw = sqlAll('SELECT b.*,m.threshold FROM batches b LEFT JOIN medicines m ON b.medicine_id=m.id ORDER BY b.expiry');
+    raw.forEach(b => {
+      const diff = Math.ceil((new Date(b.expiry) - today) / 864e5);
+      if (diff <= 30) rows.push({ Medicine:b.medicine, Batch:b.batch, Expiry:b.expiry, 'Days Left':diff<0?'EXPIRED':diff, Qty:b.qty, Supplier:b.supplier, Storage:b.storage });
+    });
+  } else if (type === 'stock') {
+    title = 'Stock Summary';
+    const today = new Date();
+    sqlAll('SELECT * FROM medicines ORDER BY name').forEach(m => {
+      const tot = sqlAll('SELECT SUM(qty) as s FROM batches WHERE medicine_id=?',[m.id])[0]?.s || 0;
+      const active = sqlAll('SELECT SUM(qty) as s FROM batches WHERE medicine_id=? AND expiry>=date("now")',[m.id])[0]?.s || 0;
+      rows.push({ Medicine:m.name, Category:m.category, Unit:m.unit, Storage:m.storage, 'Total Qty':tot, 'Active Qty':active, Threshold:m.threshold, Status: active < m.threshold ? 'Low Stock' : 'OK', 'Price (₹)':m.price });
+    });
+  } else if (type === 'purchase') {
+    title = 'Purchase Report';
+    sqlAll('SELECT * FROM purchase_orders ORDER BY date DESC').forEach(po => {
+      rows.push({ 'PO Number':po.po_number, Supplier:po.supplier, Items:po.items, 'Total (₹)':po.total, Status:po.status, Date:po.date });
+    });
+  } else if (type === 'usage') {
+    title = 'Usage / Issuance Report';
+    const days = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+    const vals = [65,88,72,95,80,58,70];
+    days.forEach((d,i) => rows.push({ Day:d, 'Units Issued':vals[i] }));
+  } else if (type === 'audit') {
+    title = 'Audit Report';
+    sqlAll('SELECT * FROM batches ORDER BY id DESC').forEach(b => {
+      rows.push({ Medicine:b.medicine, Batch:b.batch, 'Current Qty':b.qty, Expiry:b.expiry, Supplier:b.supplier });
+    });
+  } else if (type === 'supplier') {
+    title = 'Supplier Report';
+    sqlAll('SELECT * FROM suppliers').forEach(s => {
+      rows.push({ Supplier:s.name, Contact:s.contact, Email:s.email, City:s.city, 'Total Orders':s.orders, Rating:`${s.rating}/5`, Status:s.status });
+    });
+  }
+
+  if (!rows.length) { showToast('No data to export','⚠️'); return; }
+
+  if (fmt === 'CSV') {
+    downloadCSV(rows, title);
+  } else if (fmt === 'Excel') {
+    downloadExcel(rows, title);
+  } else if (fmt === 'PDF') {
+    downloadPDF(rows, title);
+  }
+
+  closeModal();
+  showToast(`${title} downloaded as ${fmt}! 📥`, '📊');
+}
+
+function downloadCSV(rows, title) {
+  const headers = Object.keys(rows[0]);
+  const csv = [
+    headers.join(','),
+    ...rows.map(r => headers.map(h => `"${String(r[h] ?? '').replace(/"/g,'""')}"`).join(','))
+  ].join('\r\n');
+  const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  triggerDownload(url, `${title.replace(/ /g,'_')}.csv`);
+  setTimeout(() => URL.revokeObjectURL(url), 10000);
+}
+
+function downloadExcel(rows, title) {
+  try {
+    const ws = XLSX.utils.json_to_sheet(rows);
+    const cols = Object.keys(rows[0]).map(k => ({ wch: Math.max(k.length, 14) }));
+    ws['!cols'] = cols;
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, title.slice(0,31));
+    XLSX.writeFile(wb, `${title.replace(/ /g,'_')}.xlsx`);
+  } catch(e) {
+    downloadCSV(rows, title);
+    showToast('Saved as CSV (Excel lib unavailable)','ℹ️');
+  }
+}
+
+function downloadPDF(rows, title) {
+  const date = new Date().toLocaleDateString('en-IN');
+  const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+  const headers = Object.keys(rows[0]);
+
+  const bg        = isDark ? '#0c1120' : '#ffffff';
+  const bgCard    = isDark ? '#111827' : '#f8faff';
+  const bgAlt     = isDark ? '#1a2535' : '#f0f4ff';
+  const textMain  = isDark ? '#f0f6ff' : '#0d1424';
+  const textMuted = isDark ? '#7a91b0' : '#4a607a';
+  const border    = isDark ? '#1e3050' : '#e2e8f0';
+  const accent    = '#6366f1';
+
+  const thStyle = `background:${accent};color:#fff;padding:10px 12px;text-align:left;font-size:12px;font-weight:700;`;
+  const tdBase  = `padding:9px 12px;border-bottom:1px solid ${border};font-size:12px;color:${textMain};`;
+
+  const tableRows = rows.map((r, i) =>
+    `<tr style="background:${i % 2 === 1 ? bgAlt : bgCard}">` +
+    headers.map(h => `<td style="${tdBase}">${r[h] ?? ''}</td>`).join('') +
+    `</tr>`
+  ).join('');
+
+  const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${title}</title>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0;}
+    body{font-family:'Segoe UI',Arial,sans-serif;background:${bg};color:${textMain};padding:32px;}
+    .hdr{display:flex;align-items:flex-start;justify-content:space-between;padding-bottom:14px;margin-bottom:14px;}
+    .htitle{font-size:22px;font-weight:800;color:${accent};line-height:1.2;}
+    .hsub{font-size:12px;color:${textMuted};margin-top:4px;}
+    .meta{font-size:12px;color:${textMuted};margin-bottom:18px;}
+    table{width:100%;border-collapse:collapse;}
+    thead tr{background:${accent};}
+    .print-btn{background:${accent};color:#fff;border:none;padding:9px 20px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;}
+    .print-btn:hover{opacity:0.85;}
+    @media print{.no-print{display:none!important;}body{padding:14px;-webkit-print-color-adjust:exact;print-color-adjust:exact;}}
+  </style></head><body>
+  <div class="hdr">
+    <div>
+      <div class="htitle">MediTrack — ${title}</div>
+      <div class="hsub">Medicine Management System</div>
+    </div>
+    <button class="print-btn no-print" onclick="window.print()">&#128438; Print / Save PDF</button>
+  </div>
+  <div class="meta">Generated on ${date} &nbsp;|&nbsp; ${rows.length} records</div>
+  <table>
+    <thead><tr>${headers.map(h=>`<th style="${thStyle}">${h}</th>`).join('')}</tr></thead>
+    <tbody>${tableRows}</tbody>
+  </table>
+  </body></html>`;
+
+  const blob = new Blob([html], { type: 'text/html;charset=utf-8;' });
+  const url  = URL.createObjectURL(blob);
+  const win  = window.open(url, '_blank');
+  if (!win) triggerDownload(url, `${title.replace(/ /g,'_')}.html`);
+  setTimeout(() => URL.revokeObjectURL(url), 60000);
+}
+
+function triggerDownload(url, filename) {
+  const a = document.createElement('a');
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click();
+  document.body.removeChild(a);
+}
+
+// ═══════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════
+// Particles on login screen too
+(function(){
+  const c = document.getElementById('particles-login');
+  if (!c) return;
+  for (let i = 0; i < 20; i++) {
+    const p = document.createElement('div');
+    p.className = 'particle';
+    p.style.cssText = `left:${Math.random()*100}%;width:${Math.random()*3+1}px;height:${Math.random()*3+1}px;animation-duration:${Math.random()*18+10}s;animation-delay:${Math.random()*10}s;`;
+    c.appendChild(p);
+  }
+})();
+
+// Update theme btn on login page
+function applyThemeToLogin() {
+  const btn = document.getElementById('login-theme-btn');
+  if (btn) btn.textContent = dark ? '🌙' : '☀️';
+}
+applyThemeToLogin();
+
+// Auto-login if remembered
+(function(){
+  const saved = localStorage.getItem('mt-session');
+  if (saved) {
+    try {
+      const u = JSON.parse(saved);
+      const accounts = getAccounts();
+      if (accounts[u.email]) {
+        currentUser = u;
+        // Instantly hide login screen — no transition needed
+        const ls = document.getElementById('login-screen');
+        ls.style.display = 'none';
+        document.querySelector('.user-name').textContent = u.name;
+        document.querySelector('.user-role').textContent = u.role;
+        document.querySelector('.user-avatar').textContent = u.name[0].toUpperCase();
+        startApp();
+        return;
+      }
+    } catch(e) {}
+  }
+  // No saved session — show login normally
+})();
+
+// ═══════════════════════════════════════════════
+// LOADER HELPERS
+// ═══════════════════════════════════════════════
+function showLoader() {
+  const l = document.getElementById('loader');
+  l.classList.remove('hiding');
+  l.style.display = 'flex';
+  requestAnimationFrame(() => { l.style.opacity = '1'; });
+  // Reset steps
+  ['lstep-1','lstep-2','lstep-3','lstep-4'].forEach((id,i) => {
+    const el = document.getElementById(id);
+    if(el){ el.className='loader-step'; if(i===0) el.classList.add('active'); }
+  });
+}
+function setLoaderStep(n, label) {
+  for(let i=1;i<=4;i++){
+    const el = document.getElementById('lstep-'+i);
+    if(!el) continue;
+    if(i < n) el.className='loader-step done';
+    else if(i === n) { el.className='loader-step active'; if(label) el.textContent=label; }
+    else el.className='loader-step';
+  }
+}
+function hideLoader() {
+  const l = document.getElementById('loader');
+  l.classList.add('hiding');
+  l.style.opacity = '0';
+  setTimeout(() => { l.style.display='none'; l.classList.remove('hiding'); }, 520);
+}
+
+// ═══════════════════════════════════════════════
+// START APP (called after login)
+// ═══════════════════════════════════════════════
+async function startApp() {
+  // Save session
+  if (currentUser) {
+    const rememberEl = document.getElementById('remember-me');
+    if (!rememberEl || rememberEl.checked) {
+      localStorage.setItem('mt-session', JSON.stringify(currentUser));
+    }
+  }
+
+  showLoader();
+
+  const badge = document.getElementById('db-badge');
+  const label = document.getElementById('db-label');
+
+  try {
+    setLoaderStep(1, '⚡ Loading SQL engine…');
+    if (!_sqlReady && _sqlPromise) await _sqlPromise;
+    setLoaderStep(2, '🗄️ Setting up database…');
+    await initSQL();
+    setLoaderStep(3, '🌱 Loading medicine data…');
+    setLoaderStep(4, '✅ Almost ready…');
+    if(badge) badge.className = 'db-badge ready';
+    if(label) label.textContent = 'SQL ✓';
+    hideLoader();
+    renderDashboard();
+    computeAlerts();
+    showToast(`Welcome, ${currentUser?.name || 'User'}! 👋`, '🚀');
+  } catch(e) {
+    if(badge) badge.className = 'db-badge loading';
+    if(label) label.textContent = 'DB Error';
+    console.error('DB init error:', e);
+    hideLoader();
+    showToast('Database error — please refresh the page', '❌');
+  }
+}
+</script>
+</body>
+</html>
