@@ -526,10 +526,10 @@ svg.donut circle{transition:stroke-dasharray 1.4s cubic-bezier(0.16,1,0.3,1),str
 #loader{
   position:fixed;inset:0;z-index:9000;background:var(--bg);
   display:none;flex-direction:column;align-items:center;justify-content:center;gap:20px;
-  transition:opacity 0.5s ease;
+  opacity:0;transition:opacity 0.3s ease;
 }
-#loader.visible{display:flex;opacity:1;}
-#loader.hiding{opacity:0;pointer-events:none;}
+#loader.active{display:flex;}
+#loader.visible{opacity:1;}
 .loader-ring{
   width:72px;height:72px;position:relative;
 }
@@ -734,7 +734,6 @@ tbody tr:hover{background:rgba(99,102,241,0.05)!important;}
     <!-- ── PANEL: SIGN IN ── -->
     <div class="login-card" id="panel-login" style="position:relative;">
       <div class="login-logo">
-        <div class="login-logo-icon"></div>
         <div>
           <div class="login-logo-text">MediTrack</div>
           <div class="login-logo-sub">Medicine Management System</div>
@@ -786,7 +785,6 @@ tbody tr:hover{background:rgba(99,102,241,0.05)!important;}
     <!-- ── PANEL: SIGN UP ── -->
     <div class="login-card" id="panel-signup" style="display:none;position:relative;">
       <div class="login-logo">
-        <div class="login-logo-icon"></div>
         <div>
           <div class="login-logo-text">MediTrack</div>
           <div class="login-logo-sub">Create your account</div>
@@ -852,7 +850,6 @@ tbody tr:hover{background:rgba(99,102,241,0.05)!important;}
     <!-- ── PANEL: FORGOT PASSWORD ── -->
     <div class="login-card" id="panel-forgot" style="display:none;position:relative;">
       <div class="login-logo">
-        <div class="login-logo-icon"></div>
         <div>
           <div class="login-logo-text">MediTrack</div>
           <div class="login-logo-sub">Reset your password</div>
@@ -1220,15 +1217,28 @@ tbody tr:hover{background:rgba(99,102,241,0.05)!important;}
         <div class="card-header">
           <div class="card-title">🚚 Supplier Management</div>
           <div style="display:flex;gap:8px;align-items:center;">
-            <div class="search-box" style="width:200px;">
+            <div class="search-box" style="width:210px;">
               <span class="search-icon">🔍</span>
               <input type="text" placeholder="Search suppliers…" oninput="searchSuppliers(this.value)">
             </div>
             <button class="btn btn-primary" onclick="openModal('addSupplier')">+ Add Supplier</button>
           </div>
         </div>
-        <div class="card-body">
-          <div class="grid-3" id="suppliers-grid"></div>
+        <div class="card-body" style="padding-bottom:0;">
+          <div class="tabs" id="sup-tabs" style="margin-bottom:0;">
+            <div class="tab active" onclick="filterSup('all',this)">All</div>
+            <div class="tab" onclick="filterSup('Active',this)">Active</div>
+            <div class="tab" onclick="filterSup('Inactive',this)">Inactive</div>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr>
+              <th>Supplier</th><th>Contact</th><th>Email</th><th>City</th>
+              <th>Orders</th><th>Rating</th><th>Status</th><th>Actions</th>
+            </tr></thead>
+            <tbody id="suppliers-tbody"></tbody>
+          </table>
         </div>
       </div>
     </div>
@@ -1953,40 +1963,57 @@ function searchAlerts(v){_alertSearch=v;renderAlerts();}
 // ═══════════════════════════════════════════════
 // SUPPLIERS
 // ═══════════════════════════════════════════════
-let _supSearch='';
+let _supSearch='', _supFilter='all';
 function renderSuppliers(){
   let q='SELECT * FROM suppliers';
-  const p=[];
-  if(_supSearch){ q+=' WHERE name LIKE ? OR city LIKE ? OR email LIKE ?'; p.push(`%${_supSearch}%`,`%${_supSearch}%`,`%${_supSearch}%`); }
+  const p=[], conds=[];
+  if(_supFilter!=='all'){ conds.push('status=?'); p.push(_supFilter); }
+  if(_supSearch){ conds.push('(name LIKE ? OR city LIKE ? OR email LIKE ? OR contact LIKE ?)'); p.push(`%${_supSearch}%`,`%${_supSearch}%`,`%${_supSearch}%`,`%${_supSearch}%`); }
+  if(conds.length) q+=' WHERE '+conds.join(' AND ');
   q+=' ORDER BY name';
   const sups=sqlAll(q,p);
-  const stars=n=>'⭐'.repeat(n)+'☆'.repeat(5-n);
-  document.getElementById('suppliers-grid').innerHTML=sups.map((s,i)=>`
-    <div class="supplier-card" style="animation:rowFade 0.4s ease ${i*0.08}s both;">
-      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;">
-        <div class="supplier-avatar">${s.name[0]}</div>
-        <span class="badge ${s.status==='Active'?'badge-success':'badge-gray'}" style="cursor:pointer;" onclick="toggleSupStatus(${s.id},'${s.status}')" title="Click to toggle">${s.status}</span>
-      </div>
-      <div class="supplier-name">${s.name}</div>
-      <div class="supplier-contact">📞 ${s.contact}</div>
-      <div class="supplier-contact" style="margin-bottom:10px;">📧 ${s.email}</div>
-      <div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap;">
-        <span class="badge badge-gray">📍 ${s.city}</span>
-        <span class="badge badge-info">📦 ${s.orders} orders</span>
-      </div>
-      <div style="font-size:13px;margin-bottom:12px;">${stars(s.rating)} <span style="font-size:11px;color:var(--text2);">(${s.rating}/5)</span></div>
-      <div style="display:flex;gap:6px;">
-        <button class="btn btn-primary btn-sm" onclick="openModal('addPO')" style="flex:1;">+ Order</button>
-        <button class="btn btn-outline btn-sm btn-icon" onclick="openModal('editSupplier',${s.id})" title="Edit">✏️</button>
-        <button class="btn btn-danger btn-sm btn-icon" onclick="delSupplier(${s.id},'${s.name.replace(/'/g,"\\'")}')">🗑️</button>
-      </div>
-    </div>`).join('')||'<div style="text-align:center;padding:40px;color:var(--text2);grid-column:1/-1;">No suppliers found</div>';
+  const stars=n=>'⭐'.repeat(Math.max(0,Math.min(5,n||0)));
+  const tbody=document.getElementById('suppliers-tbody');
+  if(!tbody) return;
+  tbody.innerHTML=sups.map((s,i)=>`
+    <tr style="animation-delay:${i*0.04}s;">
+      <td>
+        <div style="display:flex;align-items:center;gap:10px;">
+          <div style="width:34px;height:34px;border-radius:10px;background:linear-gradient(135deg,var(--primary),var(--secondary));display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;color:#fff;flex-shrink:0;">${s.name[0].toUpperCase()}</div>
+          <strong>${s.name}</strong>
+        </div>
+      </td>
+      <td style="color:var(--text2);font-family:var(--mono);font-size:12px;">${s.contact||'—'}</td>
+      <td style="color:var(--text2);font-size:12px;">${s.email||'—'}</td>
+      <td><span class="badge badge-gray">📍 ${s.city||'—'}</span></td>
+      <td style="text-align:center;font-weight:700;font-family:var(--mono);">${s.orders||0}</td>
+      <td style="font-size:13px;">${stars(s.rating)}</td>
+      <td>
+        <span class="badge ${s.status==='Active'?'badge-success':'badge-gray'}" style="cursor:pointer;" onclick="toggleSupStatus(${s.id},'${s.status}')" title="Click to toggle status">
+          ${s.status==='Active'?'✅':'⛔'} ${s.status}
+        </span>
+      </td>
+      <td>
+        <div style="display:flex;gap:6px;">
+          <button class="btn btn-primary btn-sm" onclick="openModal('addPO','${s.name.replace(/'/g,"\\'")}')">+ Order</button>
+          <button class="btn btn-outline btn-sm btn-icon" onclick="openModal('editSupplier',${s.id})" title="Edit">✏️</button>
+          <button class="btn btn-danger btn-sm btn-icon" onclick="delSupplier(${s.id},'${s.name.replace(/'/g,"\\'")}')">🗑️</button>
+        </div>
+      </td>
+    </tr>`).join('')||`<tr><td colspan="8" style="text-align:center;padding:32px;color:var(--text2);">No suppliers found</td></tr>`;
 }
 function searchSuppliers(v){_supSearch=v;renderSuppliers();}
+function filterSup(f,el){
+  _supFilter=f;
+  el.parentNode.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');
+  renderSuppliers();
+}
 function toggleSupStatus(id,current){
   const next=current==='Active'?'Inactive':'Active';
   sqlRun('UPDATE suppliers SET status=? WHERE id=?',[next,id]);
-  showToast(`Supplier ${next}`,'🔄'); renderSuppliers();
+  showToast(`Supplier marked ${next}`,'🔄');
+  saveDB(); renderSuppliers();
 }
 function saveSupplier(){
   const name=document.getElementById('f-sname').value.trim();
@@ -2004,20 +2031,26 @@ function saveSupplier(){
     sqlRun('INSERT INTO suppliers(name,contact,email,city,orders,rating,status) VALUES(?,?,?,?,?,?,?)',[name,contact,email,city,0,rating,status]);
     showToast('Supplier added','✅');
   }
-  closeModal(); renderSuppliers();
+  saveDB(); closeModal(); renderSuppliers();
 }
 function delSupplier(id,name){
   const mt=document.getElementById('modal-title');
   const mb=document.getElementById('modal-body');
   const mf=document.getElementById('modal-footer');
-  mt.textContent='🗑️ Delete Supplier';
+  mt.textContent='Delete Supplier';
   mb.innerHTML=`<div style="text-align:center;padding:10px 0;">
     <div style="font-size:40px;margin-bottom:12px;">⚠️</div>
     <div style="font-size:16px;font-weight:700;margin-bottom:8px;">Delete "${name}"?</div>
-    <div style="font-size:13px;color:var(--text2);">This will permanently remove this supplier. Cannot be undone.</div>
+    <div style="font-size:13px;color:var(--text2);">This will permanently remove this supplier. This cannot be undone.</div>
   </div>`;
-  mf.innerHTML=`<button class="btn btn-outline" onclick="closeModal()">Cancel</button><button class="btn btn-danger" onclick="sqlRun('DELETE FROM suppliers WHERE id=?',[${id}]);showToast('Supplier deleted','🗑️');closeModal();renderSuppliers();">🗑️ Delete</button>`;
+  mf.innerHTML=`<button class="btn btn-outline" onclick="closeModal()">Cancel</button>
+    <button class="btn btn-danger" onclick="confirmDelSupplier(${id})">🗑️ Delete</button>`;
   document.getElementById('modal').classList.add('open');
+}
+function confirmDelSupplier(id){
+  sqlRun('DELETE FROM suppliers WHERE id=?',[id]);
+  showToast('Supplier deleted','🗑️');
+  saveDB(); closeModal(); renderSuppliers();
 }
 
 // ═══════════════════════════════════════════════
@@ -2197,24 +2230,31 @@ function openModal(type,extra){
     mf.innerHTML=`<button class="btn btn-outline" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="saveSupplier()">💾 Save Supplier</button>`;
   }
   else if(type==='addPO'){
-    const sups=sqlAll('SELECT name FROM suppliers');
-    const meds=sqlAll('SELECT name FROM medicines ORDER BY name');
+    const sups=sqlAll('SELECT name FROM suppliers ORDER BY name');
+    const preSupplier=extra||'';
     mt.textContent='🧾 Create Purchase Order';
-    mb.innerHTML=`<div class="form-group" style="margin-bottom:14px;"><label>Supplier</label><select>${sups.map(s=>`<option>${s.name}</option>`).join('')}</select></div>
-    <label style="font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:0.6px;">Order Items</label>
-    <div id="po-items" style="margin-top:10px;">
-      <div style="display:grid;grid-template-columns:2fr 1fr 1fr;gap:8px;margin-bottom:8px;">
-        <select style="min-width:0;">${meds.map(m=>`<option>${m.name}</option>`).join('')}</select>
-        <input type="number" placeholder="Qty" style="min-width:0;">
-        <input type="text" placeholder="₹ Price" style="min-width:0;">
+    mb.innerHTML=`
+    <div class="form-grid">
+      <div class="form-group full"><label>Supplier</label>
+        <select id="f-po-supplier">
+          ${sups.map(s=>`<option ${s.name===preSupplier?'selected':''}>${s.name}</option>`).join('')}
+        </select>
+      </div>
+      <div class="form-group"><label>Expected Delivery</label><input type="date" id="f-po-delivery"></div>
+      <div class="form-group"><label>Priority</label>
+        <select id="f-po-priority"><option>Normal</option><option>Urgent</option></select>
       </div>
     </div>
-    <button class="btn btn-outline btn-sm" style="margin-top:8px;" onclick="addPOItem()">+ Add Item</button>
-    <div class="form-grid" style="margin-top:14px;">
-      <div class="form-group"><label>Expected Delivery</label><input type="date"></div>
-      <div class="form-group"><label>Priority</label><select><option>Normal</option><option>Urgent</option></select></div>
+    <div style="font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:0.6px;margin:14px 0 8px;">Order Items</div>
+    <div id="po-items"></div>
+    <button class="btn btn-outline btn-sm" style="margin-top:6px;" onclick="addPOItem()">+ Add Item</button>
+    <div style="margin-top:14px;padding:12px;background:var(--bg3);border-radius:10px;display:flex;justify-content:space-between;align-items:center;">
+      <span style="font-size:13px;color:var(--text2);">Estimated Total</span>
+      <span style="font-size:18px;font-weight:800;font-family:var(--mono);" id="po-total-display">₹0.00</span>
     </div>`;
-    mf.innerHTML=`<button class="btn btn-outline" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="showToast('Purchase Order created!','🧾');closeModal()">📤 Create PO</button>`;
+    mf.innerHTML=`<button class="btn btn-outline" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="savePO()">📤 Create PO</button>`;
+    // Add first item row after DOM ready
+    setTimeout(()=>addPOItem(), 50);
   }
   else if(type==='viewPO'){
     const po=sqlOne('SELECT * FROM purchase_orders WHERE id=?',[extra]);
@@ -2289,14 +2329,75 @@ function closeModal(){
   document.getElementById('modal').classList.remove('open');
 }
 
+function updatePOTotal(){
+  let total=0;
+  document.querySelectorAll('#po-items > div').forEach(row=>{
+    const qty=parseFloat(row.querySelector('.po-qty')?.value)||0;
+    const price=parseFloat(row.querySelector('.po-price')?.value)||0;
+    total+=qty*price;
+  });
+  const el=document.getElementById('po-total-display');
+  if(el) el.textContent='₹'+total.toFixed(2);
+}
+
+function buildMedOptions(selectedName){
+  const meds=sqlAll('SELECT name,price FROM medicines ORDER BY name');
+  return meds.map(m=>`<option data-price="${m.price}" ${m.name===selectedName?'selected':''}>${m.name}</option>`).join('');
+}
+
 function addPOItem(){
   const c=document.getElementById('po-items');
   if(!c) return;
-  const meds=sqlAll('SELECT name FROM medicines ORDER BY name');
   const row=document.createElement('div');
-  row.style.cssText='display:grid;grid-template-columns:2fr 1fr 1fr;gap:8px;margin-bottom:8px;animation:rowFade 0.25s ease;';
-  row.innerHTML=`<select style="min-width:0;">${meds.map(m=>`<option>${m.name}</option>`).join('')}</select><input type="number" placeholder="Qty" style="min-width:0;"><input type="text" placeholder="₹ Price" style="min-width:0;">`;
+  row.style.cssText='display:grid;grid-template-columns:2fr 1fr 1fr auto;gap:8px;margin-bottom:8px;animation:rowFade 0.25s ease;';
+  row.innerHTML=`<select style="min-width:0;" class="po-med">${buildMedOptions()}</select>
+    <input type="number" class="po-qty" placeholder="Qty" min="1" style="min-width:0;">
+    <input type="number" class="po-price" placeholder="₹ Price" step="0.01" style="min-width:0;">
+    <button class="btn btn-danger btn-sm btn-icon" onclick="this.closest('div').remove();updatePOTotal()" style="align-self:center;">✕</button>`;
   c.appendChild(row);
+  const sel=row.querySelector('.po-med');
+  const priceEl=row.querySelector('.po-price');
+  // Auto-fill price on select
+  function fillPrice(){
+    const opt=sel.options[sel.selectedIndex];
+    if(priceEl && opt && opt.dataset.price) priceEl.value=parseFloat(opt.dataset.price).toFixed(2);
+    updatePOTotal();
+  }
+  sel.addEventListener('change', fillPrice);
+  row.querySelector('.po-qty').addEventListener('input',updatePOTotal);
+  priceEl.addEventListener('input',updatePOTotal);
+  fillPrice(); // fill on add
+}
+
+function savePO(){
+  const supplier=document.getElementById('f-po-supplier')?.value;
+  if(!supplier){showToast('Select a supplier','⚠️');return;}
+  const rows=[...document.querySelectorAll('#po-items > div')];
+  let total=0, itemCount=0;
+  rows.forEach(row=>{
+    const qty=parseFloat(row.querySelector('.po-qty')?.value)||0;
+    const price=parseFloat(row.querySelector('.po-price')?.value)||0;
+    if(qty>0){ total+=qty*price; itemCount++; }
+  });
+  if(itemCount===0){showToast('Add at least one item with a quantity','⚠️');return;}
+  const existing=sqlAll('SELECT po_number FROM purchase_orders ORDER BY id DESC');
+  let nextNum=1;
+  if(existing.length){
+    const last=existing[0].po_number;
+    const parts=last.split('-');
+    nextNum=(parseInt(parts[parts.length-1])||0)+1;
+  }
+  const year=new Date().getFullYear();
+  const poNum=`PO-${year}-${String(nextNum).padStart(3,'0')}`;
+  const today=new Date().toISOString().split('T')[0];
+  sqlRun('INSERT INTO purchase_orders(po_number,supplier,items,total,status,date) VALUES(?,?,?,?,?,?)',
+    [poNum,supplier,itemCount,Math.round(total),'Pending',today]);
+  sqlRun('UPDATE suppliers SET orders=orders+1 WHERE name=?',[supplier]);
+  showToast(`${poNum} created!`,'🧾');
+  closeModal();
+  if(document.getElementById('page-purchase')?.classList.contains('active')) renderPOs();
+  if(document.getElementById('page-suppliers')?.classList.contains('active')) renderSuppliers();
+  renderDashboard();
 }
 
 // Modal close on outside click
@@ -2448,7 +2549,6 @@ function doLogin() {
     localStorage.removeItem('mt-session');
   }
 
-  document.getElementById('login-screen').classList.add('hide');
   document.querySelector('.user-name').textContent  = currentUser.name;
   document.querySelector('.user-role').textContent  = currentUser.role;
   document.querySelector('.user-avatar').textContent = currentUser.name[0].toUpperCase();
@@ -2495,6 +2595,7 @@ function doResetPassword() {
 function logout() {
   localStorage.removeItem('mt-session');
   currentUser = null;
+  DB = null; // Force DB re-init on next login
   // Reset all fields
   ['login-email','login-pass','su-name','su-email','su-pass','su-pass2','fp-email','fp-pass','fp-pass2'].forEach(id => {
     const el = document.getElementById(id);
@@ -2508,15 +2609,20 @@ function logout() {
     const el = document.getElementById(id);
     if (el) { el.className = el.className.replace(' show',''); el.textContent = ''; }
   });
-  document.getElementById('login-btn').disabled = false;
-  document.getElementById('login-btn-text').textContent = 'Sign In';
-  document.getElementById('login-success').classList.remove('show');
+  const loginBtn = document.getElementById('login-btn');
+  if(loginBtn) loginBtn.disabled = false;
 
+  // Make sure loader is hidden
+  const loader = document.getElementById('loader');
+  loader.classList.remove('active','visible');
+
+  // Show login screen
   const ls = document.getElementById('login-screen');
-  ls.style.display = 'flex'; ls.style.opacity = '1'; ls.style.pointerEvents = 'auto';
+  ls.style.display = 'flex';
+  ls.style.opacity = '1';
+  ls.style.pointerEvents = 'auto';
   ls.classList.remove('hide');
   switchPanel('login');
-  hideLoader();
 }
 
 // ═══════════════════════════════════════════════
@@ -2703,9 +2809,6 @@ applyThemeToLogin();
       const accounts = getAccounts();
       if (accounts[u.email]) {
         currentUser = u;
-        // Instantly hide login screen — no transition needed
-        const ls = document.getElementById('login-screen');
-        ls.style.display = 'none';
         document.querySelector('.user-name').textContent = u.name;
         document.querySelector('.user-role').textContent = u.role;
         document.querySelector('.user-avatar').textContent = u.name[0].toUpperCase();
@@ -2714,7 +2817,6 @@ applyThemeToLogin();
       }
     } catch(e) {}
   }
-  // No saved session — show login normally
 })();
 
 // ═══════════════════════════════════════════════
@@ -2722,67 +2824,70 @@ applyThemeToLogin();
 // ═══════════════════════════════════════════════
 function showLoader() {
   const l = document.getElementById('loader');
-  l.classList.remove('hiding');
-  l.style.display = 'flex';
-  requestAnimationFrame(() => { l.style.opacity = '1'; });
+  l.classList.remove('visible');
+  l.classList.add('active');
   // Reset steps
   ['lstep-1','lstep-2','lstep-3','lstep-4'].forEach((id,i) => {
     const el = document.getElementById(id);
     if(el){ el.className='loader-step'; if(i===0) el.classList.add('active'); }
   });
+  requestAnimationFrame(() => requestAnimationFrame(() => l.classList.add('visible')));
 }
-function setLoaderStep(n, label) {
+
+function setLoaderStep(n) {
   for(let i=1;i<=4;i++){
     const el = document.getElementById('lstep-'+i);
     if(!el) continue;
     if(i < n) el.className='loader-step done';
-    else if(i === n) { el.className='loader-step active'; if(label) el.textContent=label; }
+    else if(i===n) el.className='loader-step active';
     else el.className='loader-step';
   }
 }
-function hideLoader() {
+
+function hideLoader(cb) {
   const l = document.getElementById('loader');
-  l.classList.add('hiding');
-  l.style.opacity = '0';
-  setTimeout(() => { l.style.display='none'; l.classList.remove('hiding'); }, 520);
+  l.classList.remove('visible');
+  setTimeout(() => {
+    l.classList.remove('active');
+    if(cb) cb();
+  }, 320);
 }
 
 // ═══════════════════════════════════════════════
 // START APP (called after login)
 // ═══════════════════════════════════════════════
 async function startApp() {
-  // Save session
-  if (currentUser) {
-    const rememberEl = document.getElementById('remember-me');
-    if (!rememberEl || rememberEl.checked) {
-      localStorage.setItem('mt-session', JSON.stringify(currentUser));
-    }
-  }
+  // Hide login screen
+  const ls = document.getElementById('login-screen');
+  if(ls) { ls.style.opacity='0'; ls.style.pointerEvents='none'; setTimeout(()=>ls.style.display='none',300); }
 
   showLoader();
 
-  const badge = document.getElementById('db-badge');
-  const label = document.getElementById('db-label');
-
   try {
-    setLoaderStep(1, '⚡ Loading SQL engine…');
+    setLoaderStep(1);
     if (!_sqlReady && _sqlPromise) await _sqlPromise;
-    setLoaderStep(2, '🗄️ Setting up database…');
+
+    setLoaderStep(2);
     await initSQL();
-    setLoaderStep(3, '🌱 Loading medicine data…');
-    setLoaderStep(4, '✅ Almost ready…');
-    if(badge) badge.className = 'db-badge ready';
-    if(label) label.textContent = 'SQL ✓';
-    hideLoader();
-    renderDashboard();
-    computeAlerts();
-    showToast(`Welcome, ${currentUser?.name || 'User'}! 👋`, '🚀');
+
+    setLoaderStep(3);
+    await new Promise(r=>setTimeout(r,60));
+
+    setLoaderStep(4);
+    await new Promise(r=>setTimeout(r,60));
+
+    // Hide loader THEN render — ensures nothing is blocked
+    hideLoader(() => {
+      renderDashboard();
+      computeAlerts();
+      showToast(`Welcome, ${currentUser?.name || 'User'}! 👋`, '🚀');
+    });
+
   } catch(e) {
-    if(badge) badge.className = 'db-badge loading';
-    if(label) label.textContent = 'DB Error';
     console.error('DB init error:', e);
-    hideLoader();
-    showToast('Database error — please refresh the page', '❌');
+    hideLoader(() => {
+      showToast('Database error — please refresh the page ❌', '❌');
+    });
   }
 }
 </script>
